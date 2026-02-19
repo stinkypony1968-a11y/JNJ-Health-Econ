@@ -1,0 +1,20 @@
+{
+  "rep_name": "Andrew Payne",
+  "rep_role": "CAS",
+  "rep_base_city": "Jacksonville, FL",
+  "rep_base_lat": 30.3322,
+  "rep_base_lng": -81.6557,
+  "territory_name": "Florida / Georgia",
+  "map_center_lat": 29.80,
+  "map_center_lng": -81.80,
+  "map_zoom": 7,
+  "team_members": [
+    {
+      "name": "Mark",
+      "role": "TM",
+      "city": "Orlando, FL",
+      "lat": 28.5383,
+      "lng": -81.3792
+    }
+  ]
+}
