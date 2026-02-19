@@ -12,6 +12,7 @@ env/
 # Output
 *.html
 !territory_template.html
+!index.html
 
 # OS
 .DS_Store

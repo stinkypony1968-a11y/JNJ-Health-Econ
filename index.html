@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Florida / Georgia — Territory Map | J&J MedTech Neurovascular</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --jnj-navy: #00205B;
+  --jnj-red: #EB1700;
+  --jnj-blue: #0077C8;
+  --jnj-dark: #001A47;
+  --sidebar-width: 380px;
+  --drawer-width: 440px;
+  --analytics-height: 64px;
+  --header-height: 56px;
+  --cert-csc: #EB1700;
+  --cert-psc: #F59E0B;
+  --cert-tsc: #0077C8;
+  --cert-none: #6B7280;
+  --tps-high: #059669;
+  --tps-mid: #F59E0B;
+  --tps-low: #6B7280;
+  --dept-physician: #0077C8;
+  --dept-stroke: #EB1700;
+  --dept-education: #7C3AED;
+  --dept-buying: #059669;
+}
+html, body { height: 100%; font-family: 'Inter', -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+body { display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.header {
+  height: var(--header-height); background: var(--jnj-navy);
+  display: flex; align-items: center; padding: 0 20px; gap: 16px; z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.header-logo {
+  font-size: 13px; font-weight: 700; color: white; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.header-logo .jnj-mark {
+  width: 28px; height: 28px; background: var(--jnj-red); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: white; letter-spacing: 0;
+}
+.header-territory { font-size: 16px; font-weight: 600; color: white; flex: 1; }
+.header-rep { font-size: 12px; color: rgba(255,255,255,0.7); }
+.header-rep strong { color: white; font-weight: 600; }
+.header-actions { display: flex; gap: 8px; }
+.header-btn {
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+  color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px;
+  font-weight: 500; cursor: pointer; transition: all 0.15s;
+  font-family: inherit;
+}
+.header-btn:hover { background: rgba(255,255,255,0.2); }
+.header-btn.active { background: var(--jnj-blue); border-color: var(--jnj-blue); }
+
+/* ── Main Layout ────────────────────────────────────────────────────── */
+.main-container {
+  flex: 1; display: flex; position: relative; overflow: hidden;
+}
+
+/* ── Left Sidebar ───────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-width); background: white; display: flex;
+  flex-direction: column; border-right: 1px solid #e2e8f0; z-index: 500;
+}
+.sidebar-header { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+.sidebar-search {
+  width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px;
+  font-size: 13px; font-family: inherit; outline: none; transition: border 0.15s;
+}
+.sidebar-search:focus { border-color: var(--jnj-blue); }
+.sidebar-filters {
+  display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;
+  cursor: pointer; border: 1px solid #e2e8f0; background: white; color: #64748b;
+  transition: all 0.15s; font-family: inherit;
+}
+.filter-btn:hover { background: #f8fafc; }
+.filter-btn.active { background: var(--jnj-navy); color: white; border-color: var(--jnj-navy); }
+.sidebar-sort {
+  display: flex; align-items: center; gap: 6px; padding: 6px 16px;
+  border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;
+}
+.sort-select {
+  border: none; font-size: 11px; color: var(--jnj-navy); font-weight: 500;
+  cursor: pointer; font-family: inherit; outline: none; background: transparent;
+}
+.sidebar-list {
+  flex: 1; overflow-y: auto; padding: 8px;
+}
+.sidebar-list::-webkit-scrollbar { width: 5px; }
+.sidebar-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+/* ── Hospital Cards ─────────────────────────────────────────────────── */
+.hospital-card {
+  padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 6px;
+  cursor: pointer; transition: all 0.15s; position: relative;
+}
+.hospital-card:hover { border-color: var(--jnj-blue); box-shadow: 0 2px 8px rgba(0,119,200,0.1); }
+.hospital-card.selected { border-color: var(--jnj-blue); background: #f0f7ff; }
+.card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.card-rank {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--jnj-navy);
+  color: white; font-size: 10px; font-weight: 700; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+}
+.card-name { font-size: 13px; font-weight: 600; color: var(--jnj-navy); flex: 1; line-height: 1.3; }
+.card-badges { display: flex; gap: 4px; flex-shrink: 0; }
+.badge {
+  padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.3px; white-space: nowrap;
+}
+.badge-cert { color: white; }
+.badge-tier { background: #f1f5f9; color: #475569; }
+.card-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: #64748b; margin-bottom: 6px; padding-left: 30px; }
+.card-meta span { display: flex; align-items: center; gap: 3px; }
+.card-nts { display: flex; gap: 12px; padding-left: 30px; }
+.card-nts-item { font-size: 11px; }
+.card-nts-label { color: #94a3b8; }
+.card-nts-value { font-weight: 600; color: var(--jnj-navy); }
+.card-growth { font-weight: 600; font-size: 11px; margin-left: auto; padding-left: 30px; }
+.card-growth.positive { color: #059669; }
+.card-growth.negative { color: #dc2626; }
+
+/* ── Map Container ──────────────────────────────────────────────────── */
+.map-container { flex: 1; position: relative; }
+#map { width: 100%; height: 100%; }
+.leaflet-container { background: #dde6ed; }
+
+/* Custom markers */
+.hospital-marker {
+  border-radius: 50%; border: 2.5px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: transform 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700; color: white; font-family: 'Inter', sans-serif;
+}
+.hospital-marker:hover { transform: scale(1.2); z-index: 9999 !important; }
+.hospital-marker.tier-1 { border-width: 3px; }
+
+/* Map controls */
+.map-controls {
+  position: absolute; top: 12px; right: 12px; z-index: 500;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.map-ctrl-btn {
+  width: 36px; height: 36px; background: white; border: none; border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15); cursor: pointer; display: flex;
+  align-items: center; justify-content: center; font-size: 16px;
+  transition: all 0.15s; color: var(--jnj-navy);
+}
+.map-ctrl-btn:hover { background: #f0f7ff; }
+
+/* ── Right Drawer ───────────────────────────────────────────────────── */
+.drawer {
+  width: var(--drawer-width); background: white; position: absolute;
+  top: 0; right: 0; height: 100%; z-index: 600;
+  transform: translateX(100%); transition: transform 0.3s ease;
+  box-shadow: -4px 0 16px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-header {
+  padding: 14px 16px; background: var(--jnj-navy); color: white;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.drawer-title { font-size: 14px; font-weight: 600; }
+.drawer-close {
+  width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.15);
+  border: none; color: white; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.drawer-body { flex: 1; overflow-y: auto; padding: 16px; }
+.drawer-body::-webkit-scrollbar { width: 5px; }
+.drawer-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+/* Drawer sections */
+.drawer-section { margin-bottom: 20px; }
+.drawer-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+  color: #94a3b8; margin-bottom: 10px; padding-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.detail-item { }
+.detail-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+.detail-value { font-size: 13px; font-weight: 600; color: var(--jnj-navy); }
+
+/* TPS gauge */
+.tps-gauge-container { display: flex; align-items: center; gap: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; }
+.tps-gauge {
+  width: 64px; height: 64px; border-radius: 50%; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.tps-gauge-value { font-size: 20px; font-weight: 800; }
+.tps-gauge-info { flex: 1; }
+.tps-segment-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 4px;
+  font-size: 11px; font-weight: 700; color: white; margin-bottom: 4px;
+}
+.tps-strategy { font-size: 12px; color: #64748b; }
+
+/* Prevalence bars */
+.prev-bar-container { margin-bottom: 8px; }
+.prev-bar-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+.prev-bar-name { color: #64748b; }
+.prev-bar-val { font-weight: 600; color: var(--jnj-navy); }
+.prev-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.prev-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+/* Business plan */
+.biz-plan { background: #f8fafc; border-radius: 8px; padding: 12px; }
+.biz-plan-title { font-size: 13px; font-weight: 600; color: var(--jnj-navy); margin-bottom: 8px; }
+.biz-plan-items { list-style: none; }
+.biz-plan-items li {
+  font-size: 12px; color: #475569; padding: 4px 0; padding-left: 16px;
+  position: relative; line-height: 1.4;
+}
+.biz-plan-items li::before {
+  content: ''; position: absolute; left: 0; top: 10px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--jnj-blue);
+}
+
+/* ── Calendar Panel ─────────────────────────────────────────────────── */
+.calendar-panel {
+  width: var(--drawer-width); background: white; position: absolute;
+  top: 0; right: 0; height: 100%; z-index: 600;
+  transform: translateX(100%); transition: transform 0.3s ease;
+  box-shadow: -4px 0 16px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+}
+.calendar-panel.open { transform: translateX(0); }
+.calendar-header {
+  padding: 14px 16px; background: var(--jnj-navy); color: white;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.calendar-body { flex: 1; overflow-y: auto; padding: 16px; }
+.calendar-body::-webkit-scrollbar { width: 5px; }
+.calendar-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.cal-month { margin-bottom: 20px; }
+.cal-month-title {
+  font-size: 13px; font-weight: 700; color: var(--jnj-navy); margin-bottom: 8px;
+  padding-bottom: 4px; border-bottom: 2px solid var(--jnj-navy);
+}
+.cal-week { display: grid; grid-template-columns: 60px 1fr; gap: 4px; margin-bottom: 4px; }
+.cal-week-label { font-size: 10px; color: #94a3b8; padding-top: 4px; }
+.cal-week-entries { display: flex; flex-wrap: wrap; gap: 3px; }
+.cal-entry {
+  padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 500;
+  display: flex; align-items: center; gap: 4px; background: #f1f5f9;
+}
+.cal-dept-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* Cadence legend */
+.cadence-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.cadence-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #64748b; }
+
+/* ── Bottom Analytics Bar ───────────────────────────────────────────── */
+.analytics-bar {
+  height: var(--analytics-height); background: white; border-top: 1px solid #e2e8f0;
+  display: flex; align-items: center; padding: 0 20px; gap: 24px; z-index: 500;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+}
+.analytics-item { display: flex; flex-direction: column; align-items: center; }
+.analytics-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.analytics-value { font-size: 15px; font-weight: 700; color: var(--jnj-navy); }
+.analytics-value.positive { color: #059669; }
+.analytics-value.negative { color: #dc2626; }
+.analytics-divider { width: 1px; height: 36px; background: #e2e8f0; }
+.analytics-mini-bar { display: flex; gap: 2px; align-items: flex-end; height: 28px; }
+.analytics-mini-bar-item { width: 18px; border-radius: 2px 2px 0 0; position: relative; }
+.analytics-mini-bar-label {
+  position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
+  font-size: 8px; color: #94a3b8; white-space: nowrap;
+}
+.analytics-gauge {
+  width: 40px; height: 40px; border-radius: 50%; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.analytics-gauge-value { font-size: 10px; font-weight: 700; color: var(--jnj-navy); }
+
+/* ── Toast ──────────────────────────────────────────────────────────── */
+.toast-container {
+  position: fixed; bottom: 80px; right: 20px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 10px 16px; border-radius: 8px; background: var(--jnj-navy);
+  color: white; font-size: 12px; font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0; transform: translateY(10px);
+  transition: all 0.3s ease; max-width: 300px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── Popup ──────────────────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 0;
+}
+.leaflet-popup-content { margin: 0; min-width: 240px; }
+.popup-inner { padding: 14px; }
+.popup-name { font-size: 14px; font-weight: 700; color: var(--jnj-navy); margin-bottom: 4px; }
+.popup-cert { font-size: 11px; margin-bottom: 8px; }
+.popup-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.popup-stat-label { font-size: 10px; color: #94a3b8; }
+.popup-stat-value { font-size: 13px; font-weight: 600; color: var(--jnj-navy); }
+.popup-btn {
+  display: block; width: 100%; padding: 8px; background: var(--jnj-navy);
+  color: white; border: none; border-radius: 6px; font-size: 12px;
+  font-weight: 600; cursor: pointer; margin-top: 10px; font-family: inherit;
+  transition: background 0.15s;
+}
+.popup-btn:hover { background: var(--jnj-blue); }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  :root { --sidebar-width: 320px; --drawer-width: 380px; }
+}
+@media (max-width: 1024px) {
+  :root { --sidebar-width: 280px; --drawer-width: 100%; }
+  .analytics-bar { gap: 12px; padding: 0 12px; overflow-x: auto; }
+  .header-rep { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<div class="header">
+  <div class="header-logo">
+    <div class="jnj-mark">J&J</div>
+    MEDTECH NEUROVASCULAR
+  </div>
+  <div class="header-territory">Florida / Georgia</div>
+  <div class="header-rep"><strong>Andrew Payne</strong> · CAS · Jacksonville, FL</div>
+  <div class="header-actions">
+    <button class="header-btn" id="btnFitAll" title="Fit All Markers">⊞ Fit All</button>
+    <button class="header-btn" id="btnCalendar" title="Cadence Calendar">📅 Calendar</button>
+  </div>
+</div>
+
+<!-- ── Main Container ─────────────────────────────────────────────────── -->
+<div class="main-container">
+
+  <!-- Left Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <input type="text" class="sidebar-search" id="searchInput" placeholder="Search hospitals..." />
+    </div>
+    <div class="sidebar-filters" id="filterBar">
+      <button class="filter-btn active" data-filter="all">All (10)</button>
+      <button class="filter-btn" data-filter="CSC">CSC (6)</button>
+      <button class="filter-btn" data-filter="PSC">PSC (3)</button>
+      <button class="filter-btn" data-filter="TSC">TSC (1)</button>
+      
+    </div>
+    <div class="sidebar-sort">
+      Sort by:
+      <select class="sort-select" id="sortSelect">
+        <option value="nts_2025">NTS 2025 ↓</option>
+        <option value="tps_score">TPS Score ↓</option>
+        <option value="yoy_growth">YoY Growth ↓</option>
+        <option value="strokes_yr">Stroke Vol ↓</option>
+        <option value="name">Name A-Z</option>
+      </select>
+    </div>
+    <div class="sidebar-list" id="hospitalList"></div>
+  </div>
+
+  <!-- Map -->
+  <div class="map-container">
+    <div id="map"></div>
+    <div class="map-controls">
+      <button class="map-ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
+      <button class="map-ctrl-btn" id="btnZoomOut" title="Zoom Out">−</button>
+    </div>
+
+    <!-- Right Drawer (Account Detail) -->
+    <div class="drawer" id="accountDrawer">
+      <div class="drawer-header">
+        <span class="drawer-title" id="drawerTitle">Account Detail</span>
+        <button class="drawer-close" id="drawerClose">✕</button>
+      </div>
+      <div class="drawer-body" id="drawerBody"></div>
+    </div>
+
+    <!-- Calendar Panel -->
+    <div class="calendar-panel" id="calendarPanel">
+      <div class="calendar-header">
+        <span class="drawer-title">Cadence Calendar — Mar–Aug 2026</span>
+        <button class="drawer-close" id="calendarClose">✕</button>
+      </div>
+      <div class="calendar-body" id="calendarBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bottom Analytics Bar ──────────────────────────────────────────── -->
+<div class="analytics-bar">
+  <div class="analytics-item">
+    <span class="analytics-label">Hospitals</span>
+    <span class="analytics-value">10</span>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">NTS 2025</span>
+    <span class="analytics-value">$193,777</span>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">NTS 2026 Ann.</span>
+    <span class="analytics-value">$1,406,387</span>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">YoY Growth</span>
+    <span class="analytics-value positive">625.8%</span>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">Avg TPS</span>
+    <span class="analytics-value">73</span>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">TPS Distribution</span>
+    <div class="analytics-mini-bar">
+      <div class="analytics-mini-bar-item" style="height:36px; background:var(--tps-high);"><span class="analytics-mini-bar-label">H:6</span></div>
+      <div class="analytics-mini-bar-item" style="height:18px; background:var(--tps-mid);"><span class="analytics-mini-bar-label">M:3</span></div>
+      <div class="analytics-mini-bar-item" style="height:6px; background:var(--tps-low);"><span class="analytics-mini-bar-label">L:1</span></div>
+    </div>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">Tiers</span>
+    <span class="analytics-value" style="font-size:12px;">T1:3 · T2:3 · T3:4</span>
+  </div>
+  <div style="flex:1;"></div>
+  <div class="analytics-item" style="opacity:0.5;">
+    <span class="analytics-label">Generated</span>
+    <span style="font-size:10px; color:#94a3b8;">February 19, 2026</span>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ── JavaScript ──────────────────────────────────────────────────────── -->
+<script>
+// ── Data ──
+const HOSPITALS = [{"name": "Emory University Hospital", "short_name": "Emory Atlanta", "address": "1364 Clifton Rd NE, Atlanta, GA 30322", "city": "Atlanta", "state": "GA", "county": "DeKalb County, GA", "lat": 33.7942, "lng": -84.3238, "phone": "(404) 712-2000", "ir_phone": "(404) 712-2100", "beds": 733, "affiliation": "Emory Healthcare", "gpo": "Vizient", "cert": "CSC", "cert_body": "Joint Commission", "cert_color": "#EB1700", "cert_label": "Comprehensive Stroke Center", "nsg_fellowship": true, "nir_fellowship": true, "strokes_yr": 1100, "catchment": 2200000, "median_age": 34.2, "life_expectancy": 76.5, "lvo_rate": 528, "csdh_mma_rate": 381, "hemorrhagic_rate": 264, "nts_2025": 31500, "nts_2026_ytd": 28000, "nts_2026_annualized": 205714, "yoy_growth": 553.1, "tps_score": 96, "tps_segment": "HIGH", "tps_strategy": "Invest & Grow", "tier": 1, "travel_miles": 371.4, "travel_time_min": 405, "closest_team_member": "Andrew Payne", "comment": "Largest neuro program in territory"}, {"name": "Grady Memorial Hospital", "short_name": "Grady Atlanta", "address": "80 Jesse Hill Jr Dr SE, Atlanta, GA 30303", "city": "Atlanta", "state": "GA", "county": "Fulton County, GA", "lat": 33.7534, "lng": -84.3845, "phone": "(404) 616-1000", "ir_phone": "(404) 616-1100", "beds": 953, "affiliation": "Emory Healthcare", "gpo": "Premier", "cert": "CSC", "cert_body": "Joint Commission", "cert_color": "#EB1700", "cert_label": "Comprehensive Stroke Center", "nsg_fellowship": true, "nir_fellowship": false, "strokes_yr": 950, "catchment": 2500000, "median_age": 33.8, "life_expectancy": 74.1, "lvo_rate": 600, "csdh_mma_rate": 432, "hemorrhagic_rate": 300, "nts_2025": 28700, "nts_2026_ytd": 25100, "nts_2026_annualized": 184408, "yoy_growth": 542.5, "tps_score": 88, "tps_segment": "HIGH", "tps_strategy": "Invest & Grow", "tier": 1, "travel_miles": 370.9, "travel_time_min": 405, "closest_team_member": "Andrew Payne", "comment": "High volume trauma center"}, {"name": "Baptist Medical Center Jacksonville", "short_name": "Baptist Jacksonville", "address": "800 Prudential Dr, Jacksonville, FL 32207", "city": "Jacksonville", "state": "FL", "county": "Duval County, FL", "lat": 30.3187, "lng": -81.6568, "phone": "(904) 202-2000", "ir_phone": "(904) 202-2100", "beds": 972, "affiliation": "Baptist Health", "gpo": "Vizient", "cert": "CSC", "cert_body": "Joint Commission", "cert_color": "#EB1700", "cert_label": "Comprehensive Stroke Center", "nsg_fellowship": true, "nir_fellowship": true, "strokes_yr": 900, "catchment": 1750000, "median_age": 37.5, "life_expectancy": 77.4, "lvo_rate": 420, "csdh_mma_rate": 303, "hemorrhagic_rate": 210, "nts_2025": 26327, "nts_2026_ytd": 46025, "nts_2026_annualized": 338143, "yoy_growth": 1184.4, "tps_score": 94, "tps_segment": "HIGH", "tps_strategy": "Invest & Grow", "tier": 1, "travel_miles": 1.2, "travel_time_min": 1, "closest_team_member": "Andrew Payne", "comment": "175% YoY growth"}, {"name": "Orlando Regional Medical Center", "short_name": "ORMC Orlando", "address": "52 W Underwood St, Orlando, FL 32806", "city": "Orlando", "state": "FL", "county": "Orange County, FL", "lat": 28.5377, "lng": -81.3783, "phone": "(321) 841-5111", "ir_phone": "(321) 841-5200", "beds": 808, "affiliation": "Orlando Health", "gpo": "Vizient", "cert": "CSC", "cert_body": "Joint Commission", "cert_color": "#EB1700", "cert_label": "Comprehensive Stroke Center", "nsg_fellowship": true, "nir_fellowship": true, "strokes_yr": 850, "catchment": 1800000, "median_age": 35.4, "life_expectancy": 78.1, "lvo_rate": 432, "csdh_mma_rate": 311, "hemorrhagic_rate": 216, "nts_2025": 24600, "nts_2026_ytd": 21800, "nts_2026_annualized": 160163, "yoy_growth": 551.1, "tps_score": 88, "tps_segment": "HIGH", "tps_strategy": "Invest & Grow", "tier": 2, "travel_miles": 0.1, "travel_time_min": 0, "closest_team_member": "Mark", "comment": "Level 1 trauma center"}, {"name": "UF Health Jacksonville", "short_name": "UF Health Jax", "address": "655 W 8th St, Jacksonville, FL 32209", "city": "Jacksonville", "state": "FL", "county": "Duval County, FL", "lat": 30.354, "lng": -81.672, "phone": "(904) 244-0411", "ir_phone": "(904) 244-0500", "beds": 695, "affiliation": "UF Health", "gpo": "Vizient", "cert": "CSC", "cert_body": "Joint Commission", "cert_color": "#EB1700", "cert_label": "Comprehensive Stroke Center", "nsg_fellowship": true, "nir_fellowship": true, "strokes_yr": 750, "catchment": 1400000, "median_age": 36.8, "life_expectancy": 76.9, "lvo_rate": 336, "csdh_mma_rate": 242, "hemorrhagic_rate": 168, "nts_2025": 22150, "nts_2026_ytd": 18400, "nts_2026_annualized": 135184, "yoy_growth": 510.3, "tps_score": 84, "tps_segment": "HIGH", "tps_strategy": "Invest & Grow", "tier": 2, "travel_miles": 2.3, "travel_time_min": 3, "closest_team_member": "Andrew Payne", "comment": "Strong academic program"}, {"name": "Mayo Clinic Jacksonville", "short_name": "Mayo Clinic Jax", "address": "4500 San Pablo Rd S, Jacksonville, FL 32224", "city": "Jacksonville", "state": "FL", "county": "Duval County, FL", "lat": 30.2614, "lng": -81.4408, "phone": "(904) 953-2000", "ir_phone": "(904) 953-2100", "beds": 304, "affiliation": "Mayo Clinic", "gpo": "Mayo GPO", "cert": "CSC", "cert_body": "Joint Commission", "cert_color": "#EB1700", "cert_label": "Comprehensive Stroke Center", "nsg_fellowship": true, "nir_fellowship": true, "strokes_yr": 620, "catchment": 1200000, "median_age": 42.1, "life_expectancy": 80.2, "lvo_rate": 288, "csdh_mma_rate": 208, "hemorrhagic_rate": 144, "nts_2025": 19800, "nts_2026_ytd": 17500, "nts_2026_annualized": 128571, "yoy_growth": 549.3, "tps_score": 75, "tps_segment": "HIGH", "tps_strategy": "Invest & Grow", "tier": 2, "travel_miles": 17.8, "travel_time_min": 19, "closest_team_member": "Andrew Payne", "comment": "Premium facility"}, {"name": "Memorial Regional Hospital", "short_name": "Memorial Hollywood", "address": "3501 Johnson St, Hollywood, FL 33021", "city": "Hollywood", "state": "FL", "county": "Broward County, FL", "lat": 26.0216, "lng": -80.1798, "phone": "(954) 987-2000", "ir_phone": "(954) 987-2100", "beds": 1042, "affiliation": "Memorial Healthcare System", "gpo": "Premier", "cert": "PSC", "cert_body": "Joint Commission", "cert_color": "#F59E0B", "cert_label": "Primary Stroke Center", "nsg_fellowship": false, "nir_fellowship": true, "strokes_yr": 580, "catchment": 950000, "median_age": 40.2, "life_expectancy": 78.8, "lvo_rate": 228, "csdh_mma_rate": 164, "hemorrhagic_rate": 114, "nts_2025": 15200, "nts_2026_ytd": 13100, "nts_2026_annualized": 96245, "yoy_growth": 533.2, "tps_score": 67, "tps_segment": "MID", "tps_strategy": "Develop & Build", "tier": 3, "travel_miles": 245.5, "travel_time_min": 268, "closest_team_member": "Mark", "comment": "Growing neuro program"}, {"name": "Tallahassee Memorial HealthCare", "short_name": "TMH Tallahassee", "address": "1300 Miccosukee Rd, Tallahassee, FL 32308", "city": "Tallahassee", "state": "FL", "county": "Leon County, FL", "lat": 30.4558, "lng": -84.253, "phone": "(850) 431-1155", "ir_phone": "", "beds": 772, "affiliation": "TMH Healthcare", "gpo": "HealthTrust", "cert": "PSC", "cert_body": "DNV", "cert_color": "#F59E0B", "cert_label": "Primary Stroke Center", "nsg_fellowship": false, "nir_fellowship": false, "strokes_yr": 420, "catchment": 600000, "median_age": 35.9, "life_expectancy": 77.8, "lvo_rate": 144, "csdh_mma_rate": 104, "hemorrhagic_rate": 72, "nts_2025": 12400, "nts_2026_ytd": 10800, "nts_2026_annualized": 79347, "yoy_growth": 539.9, "tps_score": 52, "tps_segment": "MID", "tps_strategy": "Develop & Build", "tier": 3, "travel_miles": 201.5, "travel_time_min": 220, "closest_team_member": "Andrew Payne", "comment": "Regional stroke center"}, {"name": "Augusta University Medical Center", "short_name": "AU Medical Augusta", "address": "1120 15th St, Augusta, GA 30912", "city": "Augusta", "state": "GA", "county": "Richmond County, GA", "lat": 33.461, "lng": -81.969, "phone": "(706) 721-0211", "ir_phone": "(706) 721-0300", "beds": 478, "affiliation": "Augusta University Health", "gpo": "Vizient", "cert": "PSC", "cert_body": "Joint Commission", "cert_color": "#F59E0B", "cert_label": "Primary Stroke Center", "nsg_fellowship": true, "nir_fellowship": false, "strokes_yr": 380, "catchment": 550000, "median_age": 36.1, "life_expectancy": 75.6, "lvo_rate": 132, "csdh_mma_rate": 95, "hemorrhagic_rate": 66, "nts_2025": 8900, "nts_2026_ytd": 7200, "nts_2026_annualized": 52898, "yoy_growth": 494.4, "tps_score": 52, "tps_segment": "MID", "tps_strategy": "Develop & Build", "tier": 3, "travel_miles": 282.1, "travel_time_min": 308, "closest_team_member": "Andrew Payne", "comment": "Academic medical center"}, {"name": "Flagler Hospital", "short_name": "Flagler St Augustine", "address": "400 Health Park Blvd, St Augustine, FL 32086", "city": "St Augustine", "state": "FL", "county": "St Johns County, FL", "lat": 29.871, "lng": -81.315, "phone": "(904) 819-5155", "ir_phone": "", "beds": 335, "affiliation": "Flagler Health+", "gpo": "HealthTrust", "cert": "TSC", "cert_body": "DNV", "cert_color": "#0077C8", "cert_label": "Thrombectomy-Capable Stroke Center", "nsg_fellowship": false, "nir_fellowship": false, "strokes_yr": 180, "catchment": 280000, "median_age": 45.3, "life_expectancy": 80.1, "lvo_rate": 67, "csdh_mma_rate": 48, "hemorrhagic_rate": 34, "nts_2025": 4200, "nts_2026_ytd": 3500, "nts_2026_annualized": 25714, "yoy_growth": 512.2, "tps_score": 34, "tps_segment": "LOW", "tps_strategy": "Monitor & Nurture", "tier": 3, "travel_miles": 49.2, "travel_time_min": 54, "closest_team_member": "Andrew Payne", "comment": "Smaller community hospital"}];
+const CONFIG = {
+  repName: "Andrew Payne",
+  repRole: "CAS",
+  repBaseCity: "Jacksonville, FL",
+  repBaseLat: 30.3322,
+  repBaseLng: -81.6557,
+  territoryName: "Florida / Georgia",
+  mapCenterLat: 29.8,
+  mapCenterLng: -81.8,
+  mapZoom: 7,
+  teamMembers: [{"city": "Orlando, FL", "lat": 28.5383, "lng": -81.3792, "name": "Mark", "role": "TM"}]
+};
+
+// ── Map Setup ──
+const map = L.map('map', {
+  center: [CONFIG.mapCenterLat, CONFIG.mapCenterLng],
+  zoom: CONFIG.mapZoom,
+  zoomControl: false
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
+
+// ── State ──
+let markers = {};
+let selectedHospital = null;
+let activeFilter = 'all';
+let activeSortKey = 'nts_2025';
+
+// ── Utility Functions ──
+function fmt(n) { return n != null ? n.toLocaleString() : '—'; }
+function fmtMoney(n) { return n != null ? '$' + n.toLocaleString() : '—'; }
+
+function getCertColor(cert) {
+  const colors = { CSC: '#EB1700', PSC: '#F59E0B', TSC: '#0077C8', TCC: '#0077C8' };
+  return colors[cert] || '#6B7280';
+}
+
+function getTpsColor(segment) {
+  const colors = { HIGH: '#059669', MID: '#F59E0B', LOW: '#6B7280' };
+  return colors[segment] || '#6B7280';
+}
+
+function markerSize(nts) {
+  const maxNts = Math.max(...HOSPITALS.map(h => h.nts_2025));
+  const minSize = 18, maxSize = 42;
+  if (maxNts === 0) return minSize;
+  return Math.round(minSize + (nts / maxNts) * (maxSize - minSize));
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// ── Create Markers ──
+function createMarkers() {
+  HOSPITALS.forEach((h, i) => {
+    const size = markerSize(h.nts_2025);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="hospital-marker${h.tier === 1 ? ' tier-1' : ''}" style="width:${size}px;height:${size}px;background:${getCertColor(h.cert)};">${h.tier}</div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    });
+
+    const marker = L.marker([h.lat, h.lng], { icon }).addTo(map);
+    marker.on('click', () => openPopup(h, marker));
+    markers[i] = marker;
+  });
+}
+
+function openPopup(h, marker) {
+  const growthClass = h.yoy_growth > 0 ? 'positive' : 'negative';
+  const growthIcon = h.yoy_growth > 0 ? '↑' : '↓';
+  const popupHtml = `
+    <div class="popup-inner">
+      <div class="popup-name">${h.short_name}</div>
+      <div class="popup-cert"><span class="badge badge-cert" style="background:${getCertColor(h.cert)}">${h.cert || 'None'}</span>
+        <span class="badge badge-tier">Tier ${h.tier}</span></div>
+      <div class="popup-stats">
+        <div><div class="popup-stat-label">Beds</div><div class="popup-stat-value">${fmt(h.beds)}</div></div>
+        <div><div class="popup-stat-label">Strokes/Yr</div><div class="popup-stat-value">${fmt(h.strokes_yr)}</div></div>
+        <div><div class="popup-stat-label">NTS 2025</div><div class="popup-stat-value">${fmtMoney(h.nts_2025)}</div></div>
+        <div><div class="popup-stat-label">YoY</div><div class="popup-stat-value" style="color:${h.yoy_growth > 0 ? '#059669' : '#dc2626'}">${growthIcon} ${Math.abs(h.yoy_growth)}%</div></div>
+      </div>
+      <div style="margin-top:6px;"><div class="popup-stat-label">TPS</div><div class="popup-stat-value">${h.tps_score} <span style="font-size:10px;color:${getTpsColor(h.tps_segment)}">${h.tps_segment}</span></div></div>
+      <button class="popup-btn" onclick="openDrawer(${HOSPITALS.indexOf(h)})">View Full Profile →</button>
+    </div>`;
+  marker.bindPopup(popupHtml, { maxWidth: 280 }).openPopup();
+}
+
+// ── Sidebar Cards ──
+function renderCards() {
+  const list = document.getElementById('hospitalList');
+  let filtered = HOSPITALS.filter(h => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'TSC') return h.cert === 'TSC' || h.cert === 'TCC';
+    return h.cert === activeFilter;
+  });
+
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  if (searchTerm) {
+    filtered = filtered.filter(h =>
+      h.name.toLowerCase().includes(searchTerm) ||
+      h.short_name.toLowerCase().includes(searchTerm) ||
+      h.city.toLowerCase().includes(searchTerm) ||
+      h.affiliation.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  // Sort
+  filtered.sort((a, b) => {
+    if (activeSortKey === 'name') return a.name.localeCompare(b.name);
+    return (b[activeSortKey] || 0) - (a[activeSortKey] || 0);
+  });
+
+  // Update marker visibility
+  HOSPITALS.forEach((h, i) => {
+    const visible = filtered.includes(h);
+    if (markers[i]) {
+      if (visible) markers[i].addTo(map);
+      else map.removeLayer(markers[i]);
+    }
+  });
+
+  list.innerHTML = filtered.map((h, rank) => {
+    const idx = HOSPITALS.indexOf(h);
+    const isSelected = selectedHospital === idx;
+    const growthClass = h.yoy_growth > 0 ? 'positive' : 'negative';
+    return `
+      <div class="hospital-card${isSelected ? ' selected' : ''}" onclick="selectHospital(${idx})" data-idx="${idx}">
+        <div class="card-header">
+          <div class="card-rank">${rank + 1}</div>
+          <div class="card-name">${h.name}</div>
+          <div class="card-badges">
+            <span class="badge badge-cert" style="background:${getCertColor(h.cert)}">${h.cert || '—'}</span>
+            <span class="badge badge-tier">T${h.tier}</span>
+          </div>
+        </div>
+        <div class="card-meta">
+          <span>${fmt(h.beds)} beds</span>
+          <span>${fmt(h.strokes_yr)} strokes/yr</span>
+          <span>${h.affiliation}</span>
+        </div>
+        <div style="display:flex;align-items:center;">
+          <div class="card-nts">
+            <div class="card-nts-item"><span class="card-nts-label">NTS 25: </span><span class="card-nts-value">${fmtMoney(h.nts_2025)}</span></div>
+            <div class="card-nts-item"><span class="card-nts-label">YTD 26: </span><span class="card-nts-value">${fmtMoney(h.nts_2026_ytd)}</span></div>
+          </div>
+          <div class="card-growth ${growthClass}" style="margin-left:auto;">${h.yoy_growth > 0 ? '↑' : '↓'} ${Math.abs(h.yoy_growth)}%</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function selectHospital(idx) {
+  selectedHospital = idx;
+  const h = HOSPITALS[idx];
+  renderCards();
+  map.setView([h.lat, h.lng], Math.max(map.getZoom(), 10));
+  if (markers[idx]) markers[idx].fire('click');
+}
+
+// ── Account Drawer ──
+function openDrawer(idx) {
+  closeCalendar();
+  const h = HOSPITALS[idx];
+  selectedHospital = idx;
+  document.getElementById('drawerTitle').textContent = h.short_name;
+
+  const tpsColor = getTpsColor(h.tps_segment);
+  const certColor = getCertColor(h.cert);
+
+  // Business plan based on segment
+  const plans = {
+    HIGH: {
+      title: 'Invest & Grow',
+      items: [
+        'Schedule weekly touchpoints with neuro IR and stroke teams',
+        'Coordinate product evaluation trials for new devices',
+        'Host quarterly clinical education events (grand rounds, case reviews)',
+        'Develop joint clinical protocols with department heads',
+        'Track utilization metrics and expand product portfolio',
+        'Engage fellowship programs with training partnerships'
+      ]
+    },
+    MID: {
+      title: 'Develop & Build',
+      items: [
+        'Increase visit cadence to twice monthly',
+        'Identify clinical champions and engage key decision-makers',
+        'Conduct product in-services with nursing and tech staff',
+        'Present clinical data and outcomes studies',
+        'Target competitive conversion opportunities',
+        'Build relationships with VAC and supply chain contacts'
+      ]
+    },
+    LOW: {
+      title: 'Monitor & Nurture',
+      items: [
+        'Maintain monthly check-in cadence',
+        'Monitor for program growth or leadership changes',
+        'Provide responsive clinical support as needed',
+        'Track competitive landscape and market shifts',
+        'Assess quarterly for segment reclassification',
+        'Maintain basic product awareness and availability'
+      ]
+    }
+  };
+  const plan = plans[h.tps_segment];
+
+  // Prevalence bars (scale to max in territory)
+  const maxLvo = Math.max(...HOSPITALS.map(x => x.lvo_rate || 0)) || 1;
+  const maxCsdh = Math.max(...HOSPITALS.map(x => x.csdh_mma_rate || 0)) || 1;
+  const maxHem = Math.max(...HOSPITALS.map(x => x.hemorrhagic_rate || 0)) || 1;
+
+  const cadenceMap = { HIGH: 'Weekly', MID: 'Twice/Month', LOW: 'Monthly' };
+
+  document.getElementById('drawerBody').innerHTML = `
+    <!-- Hospital Profile -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Hospital Profile</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Full Name</div><div class="detail-value" style="font-size:12px;">${h.name}</div></div>
+        <div class="detail-item"><div class="detail-label">Certification</div><div class="detail-value"><span class="badge badge-cert" style="background:${certColor}">${h.cert || 'None'}</span>${h.cert_body ? ' <span style="font-size:10px;color:#94a3b8;">'+h.cert_body+'</span>' : ''}</div></div>
+        <div class="detail-item"><div class="detail-label">Licensed Beds</div><div class="detail-value">${fmt(h.beds)}</div></div>
+        <div class="detail-item"><div class="detail-label">Strokes/Year</div><div class="detail-value">${fmt(h.strokes_yr)}</div></div>
+        <div class="detail-item"><div class="detail-label">Affiliation</div><div class="detail-value" style="font-size:12px;">${h.affiliation}</div></div>
+        <div class="detail-item"><div class="detail-label">GPO</div><div class="detail-value" style="font-size:12px;">${h.gpo}</div></div>
+        <div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value" style="font-size:12px;">${h.phone}</div></div>
+        <div class="detail-item"><div class="detail-label">IR Phone</div><div class="detail-value" style="font-size:12px;">${h.ir_phone || '—'}</div></div>
+        <div class="detail-item"><div class="detail-label">Address</div><div class="detail-value" style="font-size:11px;">${h.address}</div></div>
+        <div class="detail-item"><div class="detail-label">County</div><div class="detail-value" style="font-size:12px;">${h.county}</div></div>
+      </div>
+    </div>
+
+    <!-- Programs -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Programs</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Neurosurgery Fellowship</div><div class="detail-value">${h.nsg_fellowship ? '✓ Yes' : '✗ No'}</div></div>
+        <div class="detail-item"><div class="detail-label">Neuro IR Fellowship</div><div class="detail-value">${h.nir_fellowship ? '✓ Yes' : '✗ No'}</div></div>
+      </div>
+    </div>
+
+    <!-- TPS Score -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Territory Priority Score</div>
+      <div class="tps-gauge-container">
+        <div class="tps-gauge" style="background: conic-gradient(${tpsColor} ${h.tps_score * 3.6}deg, #e2e8f0 0);">
+          <div style="width:48px;height:48px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;">
+            <span class="tps-gauge-value" style="color:${tpsColor}">${h.tps_score}</span>
+          </div>
+        </div>
+        <div class="tps-gauge-info">
+          <div class="tps-segment-badge" style="background:${tpsColor}">${h.tps_segment}</div>
+          <div class="tps-strategy">${h.tps_strategy}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Tier ${h.tier} · ${cadenceMap[h.tps_segment]} cadence</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catchment Demographics -->
+    ${h.catchment > 0 ? `
+    <div class="drawer-section">
+      <div class="drawer-section-title">Catchment Demographics</div>
+      <div class="detail-grid" style="margin-bottom:12px;">
+        <div class="detail-item"><div class="detail-label">Population</div><div class="detail-value">${fmt(h.catchment)}</div></div>
+        <div class="detail-item"><div class="detail-label">Median Age</div><div class="detail-value">${h.median_age || '—'}</div></div>
+        <div class="detail-item"><div class="detail-label">Life Expectancy</div><div class="detail-value">${h.life_expectancy || '—'}</div></div>
+      </div>
+      <div class="drawer-section-title" style="font-size:10px;">Stroke Prevalence Estimates</div>
+      <div class="prev-bar-container">
+        <div class="prev-bar-label"><span class="prev-bar-name">LVO (24/100k)</span><span class="prev-bar-val">${fmt(h.lvo_rate)}/yr</span></div>
+        <div class="prev-bar"><div class="prev-bar-fill" style="width:${Math.round(h.lvo_rate / maxLvo * 100)}%;background:var(--jnj-red);"></div></div>
+      </div>
+      <div class="prev-bar-container">
+        <div class="prev-bar-label"><span class="prev-bar-name">cSDH/MMA (17.3/100k)</span><span class="prev-bar-val">${fmt(h.csdh_mma_rate)}/yr</span></div>
+        <div class="prev-bar"><div class="prev-bar-fill" style="width:${Math.round(h.csdh_mma_rate / maxCsdh * 100)}%;background:var(--jnj-blue);"></div></div>
+      </div>
+      <div class="prev-bar-container">
+        <div class="prev-bar-label"><span class="prev-bar-name">Hemorrhagic (12/100k)</span><span class="prev-bar-val">${fmt(h.hemorrhagic_rate)}/yr</span></div>
+        <div class="prev-bar"><div class="prev-bar-fill" style="width:${Math.round(h.hemorrhagic_rate / maxHem * 100)}%;background:#7C3AED;"></div></div>
+      </div>
+    </div>` : ''}
+
+    <!-- Sales Performance -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Sales Performance</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">NTS 2025</div><div class="detail-value">${fmtMoney(h.nts_2025)}</div></div>
+        <div class="detail-item"><div class="detail-label">NTS 2026 YTD</div><div class="detail-value">${fmtMoney(h.nts_2026_ytd)}</div></div>
+        <div class="detail-item"><div class="detail-label">2026 Annualized</div><div class="detail-value">${fmtMoney(h.nts_2026_annualized)}</div></div>
+        <div class="detail-item"><div class="detail-label">YoY Growth</div><div class="detail-value" style="color:${h.yoy_growth > 0 ? '#059669' : '#dc2626'}">${h.yoy_growth > 0 ? '↑' : '↓'} ${Math.abs(h.yoy_growth)}%</div></div>
+      </div>
+      ${h.comment ? `<div style="margin-top:8px;padding:8px;background:#fffbeb;border-radius:6px;font-size:11px;color:#92400e;">💡 ${h.comment}</div>` : ''}
+    </div>
+
+    <!-- Business Plan -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Business Plan</div>
+      <div class="biz-plan">
+        <div class="biz-plan-title" style="color:${tpsColor}">Strategy: ${plan.title}</div>
+        <ul class="biz-plan-items">
+          ${plan.items.map(item => `<li>${item}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Travel & Logistics -->
+    <div class="drawer-section">
+      <div class="drawer-section-title">Travel & Logistics</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Closest Team Member</div><div class="detail-value" style="font-size:12px;">${h.closest_team_member}</div></div>
+        <div class="detail-item"><div class="detail-label">Distance</div><div class="detail-value">${h.travel_miles} mi</div></div>
+        <div class="detail-item"><div class="detail-label">Drive Time</div><div class="detail-value">${h.travel_time_min} min</div></div>
+        <div class="detail-item"><div class="detail-label">Recommended Cadence</div><div class="detail-value">${cadenceMap[h.tps_segment]}</div></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('accountDrawer').classList.add('open');
+  renderCards();
+  showToast(`Viewing ${h.short_name}`);
+}
+
+function closeDrawer() {
+  document.getElementById('accountDrawer').classList.remove('open');
+  selectedHospital = null;
+  renderCards();
+}
+
+// ── Calendar Panel ──
+function openCalendar() {
+  closeDrawer();
+  const months = [
+    { name: 'March 2026', weeks: 4, startWeek: 1 },
+    { name: 'April 2026', weeks: 4, startWeek: 5 },
+    { name: 'May 2026', weeks: 5, startWeek: 9 },
+    { name: 'June 2026', weeks: 4, startWeek: 14 },
+    { name: 'July 2026', weeks: 5, startWeek: 18 },
+    { name: 'August 2026', weeks: 4, startWeek: 23 }
+  ];
+
+  const deptColors = {
+    'Physician Lab': 'var(--dept-physician)',
+    'Stroke Coord': 'var(--dept-stroke)',
+    'Education Coord': 'var(--dept-education)',
+    'Buying/VAC': 'var(--dept-buying)'
+  };
+
+  const cadenceWeeks = { HIGH: 1, MID: 2, LOW: 4 };
+
+  let html = `
+    <div class="cadence-legend">
+      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-physician)"></div>Physician Lab</div>
+      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-stroke)"></div>Stroke Coord</div>
+      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-education)"></div>Education Coord</div>
+      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-buying)"></div>Buying/VAC</div>
+    </div>`;
+
+  months.forEach(month => {
+    html += `<div class="cal-month"><div class="cal-month-title">${month.name}</div>`;
+    for (let w = 0; w < month.weeks; w++) {
+      const weekNum = month.startWeek + w;
+      html += `<div class="cal-week"><div class="cal-week-label">Wk ${weekNum}</div><div class="cal-week-entries">`;
+
+      HOSPITALS.forEach(h => {
+        const cadence = cadenceWeeks[h.tps_segment];
+        if ((weekNum - 1) % cadence === 0) {
+          // Determine which departments to visit
+          const depts = ['Physician Lab'];
+          if (weekNum % 2 === 0) depts.push('Stroke Coord');
+          if (weekNum % 3 === 0) depts.push('Education Coord');
+          if (weekNum % 4 === 0) depts.push('Buying/VAC');
+
+          const dots = depts.map(d => `<div class="cal-dept-dot" style="background:${deptColors[d]}" title="${d}"></div>`).join('');
+          html += `<div class="cal-entry" onclick="openDrawer(${HOSPITALS.indexOf(h)})" style="cursor:pointer;" title="${h.short_name}: ${depts.join(', ')}">${dots}<span>${h.short_name.length > 14 ? h.short_name.substring(0,12)+'…' : h.short_name}</span></div>`;
+        }
+      });
+
+      html += `</div></div>`;
+    }
+    html += `</div>`;
+  });
+
+  document.getElementById('calendarBody').innerHTML = html;
+  document.getElementById('calendarPanel').classList.add('open');
+  showToast('Cadence calendar opened');
+}
+
+function closeCalendar() {
+  document.getElementById('calendarPanel').classList.remove('open');
+}
+
+// ── Fit All ──
+function fitAll() {
+  const bounds = L.latLngBounds(HOSPITALS.map(h => [h.lat, h.lng]));
+  map.fitBounds(bounds, { padding: [40, 40] });
+  showToast('Map fitted to all markers');
+}
+
+// ── Event Listeners ──
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('calendarClose').addEventListener('click', closeCalendar);
+document.getElementById('btnFitAll').addEventListener('click', fitAll);
+document.getElementById('btnCalendar').addEventListener('click', () => {
+  if (document.getElementById('calendarPanel').classList.contains('open')) {
+    closeCalendar();
+  } else {
+    openCalendar();
+  }
+});
+document.getElementById('btnZoomIn').addEventListener('click', () => map.zoomIn());
+document.getElementById('btnZoomOut').addEventListener('click', () => map.zoomOut());
+
+// Search
+document.getElementById('searchInput').addEventListener('input', renderCards);
+
+// Filters
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    renderCards();
+  });
+});
+
+// Sort
+document.getElementById('sortSelect').addEventListener('change', e => {
+  activeSortKey = e.target.value;
+  renderCards();
+});
+
+// ── Initialize ──
+createMarkers();
+renderCards();
+
+// Close drawer/calendar on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeDrawer(); closeCalendar(); }
+});
+</script>
+</body>
+</html>
