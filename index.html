@@ -908,15 +908,19 @@ function showCountyFlyaway(fips, latlng) {
     '<div class="county-flyaway-footer">Sources: CMS Chronic Conditions Warehouse · BRFSS · CDC WONDER · CMS Part D PUF</div>';
 
   countyFlyawayEl.innerHTML = html;
-  // Position the flyaway near the click point
-  var mapRect = document.getElementById('map').getBoundingClientRect();
+  // Position flyaway snug to the click point within the map container
+  var mapContainer = document.querySelector('.map-container');
+  var mapRect = mapContainer.getBoundingClientRect();
   var point = map.latLngToContainerPoint(latlng);
-  var left = point.x + mapRect.left + 16;
-  var top = point.y + mapRect.top - 80;
-  // Keep within viewport
-  if (left + 360 > window.innerWidth) left = point.x + mapRect.left - 360;
-  if (top < mapRect.top) top = mapRect.top + 10;
-  if (top + 340 > window.innerHeight) top = window.innerHeight - 360;
+  var cardW = 340, cardH = 360, gap = 4;
+  // Default: right of click, vertically centered
+  var left = point.x + gap;
+  var top = point.y - cardH / 2;
+  // Flip left if overflows right
+  if (left + cardW > mapRect.width) left = point.x - cardW - gap;
+  // Clamp vertical
+  if (top < 8) top = 8;
+  if (top + cardH > mapRect.height - 8) top = mapRect.height - cardH - 8;
   countyFlyawayEl.style.left = left + 'px';
   countyFlyawayEl.style.top = top + 'px';
   countyFlyawayEl.classList.add('visible');
