@@ -326,6 +326,44 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 }
 .popup-btn:hover { background: var(--jnj-blue); }
 
+/* ── Source Tooltips ─────────────────────────────────────────────────── */
+.src-tip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #e2e8f0; color: #64748b; font-size: 9px; font-weight: 700;
+  cursor: help; position: relative; vertical-align: middle; margin-left: 3px;
+  font-style: italic; font-family: Georgia, serif; line-height: 1;
+}
+.src-tip:hover { background: var(--jnj-blue); color: white; }
+.src-tip:hover::after {
+  content: attr(data-src);
+  position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
+  background: var(--jnj-navy); color: white; padding: 6px 10px;
+  border-radius: 6px; font-size: 10px; font-weight: 400; font-style: normal;
+  font-family: 'Inter', sans-serif; white-space: nowrap; z-index: 9999;
+  max-width: 340px; white-space: normal; line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: none;
+}
+.src-tip:hover::before {
+  content: ''; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+  border: 5px solid transparent; border-top-color: var(--jnj-navy); z-index: 9999;
+}
+
+/* Sources panel */
+.sources-panel {
+  padding: 12px; background: #f8fafc; border-radius: 8px;
+  border: 1px solid #e2e8f0; margin-top: 8px;
+}
+.sources-panel-title {
+  font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase;
+  letter-spacing: 0.8px; margin-bottom: 8px;
+}
+.sources-panel-item {
+  font-size: 10px; color: #64748b; line-height: 1.6; margin-bottom: 4px;
+  padding-left: 12px; text-indent: -12px;
+}
+.sources-panel-item strong { color: var(--jnj-navy); }
+
 /* ── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
   :root { --sidebar-width: 320px; --drawer-width: 400px; }
@@ -671,15 +709,18 @@ function openDrawer(idx) {
 
   let html = '';
 
+  // Source tooltip helper
+  function src(text) { return '<span class="src-tip" data-src="' + text + '">i</span>'; }
+
   // ── Hospital Profile ──
   html += '<div class="drawer-section">' +
     '<div class="drawer-section-title">Hospital Profile</div>' +
     '<div class="detail-grid">' +
     '<div class="detail-item"><div class="detail-label">Full Name</div><div class="detail-value" style="font-size:12px;">' + h.name + '</div></div>' +
-    '<div class="detail-item"><div class="detail-label">Certification</div><div class="detail-value"><span class="badge badge-cert" style="background:' + certColor + '">' + (h.cert || 'None') + '</span>' + (h.cert_body ? ' <span style="font-size:10px;color:#94a3b8;">' + h.cert_body + '</span>' : '') + '</div></div>' +
-    '<div class="detail-item"><div class="detail-label">Licensed Beds</div><div class="detail-value">' + fmt(h.beds) + '</div></div>' +
-    '<div class="detail-item"><div class="detail-label">Strokes/Year</div><div class="detail-value">' + fmt(h.strokes_yr) + '</div></div>' +
-    '<div class="detail-item"><div class="detail-label">Affiliation</div><div class="detail-value" style="font-size:12px;">' + h.affiliation + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Certification' + src(h.cert_body ? h.cert_body + ' QualityCheck Registry' : 'Hospital website') + '</div><div class="detail-value"><span class="badge badge-cert" style="background:' + certColor + '">' + (h.cert || 'None') + '</span>' + (h.cert_body ? ' <span style="font-size:10px;color:#94a3b8;">' + h.cert_body + '</span>' : '') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Licensed Beds' + src('CMS Care Compare / AHD.com Medicare Cost Report') + '</div><div class="detail-value">' + fmt(h.beds) + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Strokes/Year' + src('AHA Get With The Guidelines / Hospital self-reported') + '</div><div class="detail-value">' + fmt(h.strokes_yr) + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Affiliation' + src('Hospital website / SEC filings') + '</div><div class="detail-value" style="font-size:12px;">' + h.affiliation + '</div></div>' +
     '<div class="detail-item"><div class="detail-label">GPO</div><div class="detail-value" style="font-size:12px;">' + h.gpo + '</div></div>' +
     '<div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value" style="font-size:12px;">' + h.phone + '</div></div>' +
     '<div class="detail-item"><div class="detail-label">IR Phone</div><div class="detail-value" style="font-size:12px;">' + (h.ir_phone || '—') + '</div></div>' +
@@ -697,7 +738,7 @@ function openDrawer(idx) {
 
   // ── Infrastructure Score & Tier ──
   html += '<div class="drawer-section">' +
-    '<div class="drawer-section-title">Clinical Priority</div>' +
+    '<div class="drawer-section-title">Clinical Priority' + src('Weighted composite: cert level + capabilities + fellowships + volume bonus') + '</div>' +
     '<div class="infra-gauge-container">' +
     '<div class="infra-gauge" style="background: conic-gradient(' + tierColor + ' ' + (h.infrastructure_score * 3.6) + 'deg, #e2e8f0 0);">' +
     '<div style="width:48px;height:48px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;">' +
@@ -726,11 +767,11 @@ function openDrawer(idx) {
   // ── Catchment Demographics ──
   if (h.pop_total > 0) {
     html += '<div class="drawer-section">' +
-      '<div class="drawer-section-title">Catchment Demographics</div>' +
+      '<div class="drawer-section-title">Catchment Demographics' + src('US Census Bureau ACS 5-Year Estimates / CDC WONDER') + '</div>' +
       '<div class="detail-grid" style="margin-bottom:12px;">' +
       '<div class="detail-item"><div class="detail-label">Total Population</div><div class="detail-value">' + fmt(h.pop_total) + '</div></div>' +
       '<div class="detail-item"><div class="detail-label">Population 65+</div><div class="detail-value">' + fmt(h.pop_65_plus) + ' (' + h.pop_65_pct + '%)</div></div>' +
-      '<div class="detail-item"><div class="detail-label">Effective Population</div><div class="detail-value">' + fmt(h.effective_pop) + '</div></div>' +
+      '<div class="detail-item"><div class="detail-label">Effective Population' + src('Age-adjusted: pop_under_65 + (pop_65+ × 2.5) — CDC MMWR 2019 age-adjusted stroke incidence') + '</div><div class="detail-value">' + fmt(h.effective_pop) + '</div></div>' +
       '<div class="detail-item"><div class="detail-label">Median Age</div><div class="detail-value">' + (h.median_age || '—') + '</div></div>' +
       '<div class="detail-item"><div class="detail-label">Life Expectancy</div><div class="detail-value">' + (h.life_expectancy || '—') + '</div></div>' +
       '</div></div>';
@@ -738,32 +779,32 @@ function openDrawer(idx) {
 
   // ── Stroke Epidemiology ──
   html += '<div class="drawer-section">' +
-    '<div class="drawer-section-title">Stroke Epidemiology (Estimated)</div>';
+    '<div class="drawer-section-title">Stroke Epidemiology (Estimated)' + src('Rai AT et al. JNIS 2023;15:e349-e355 · DAWN/DEFUSE-3 trials · AHA Stats 2024 · GBD 2019') + '</div>';
 
   if (h.ischemic_volume > 0 || h.strokes_yr > 0) {
     html += '<div class="epi-summary">' +
       '<div class="epi-card"><div class="epi-card-value">' + fmt(h.ischemic_volume) + '</div><div class="epi-card-label">Ischemic/Yr</div></div>' +
       '<div class="epi-card"><div class="epi-card-value">' + fmt(h.lvo_volume) + '</div><div class="epi-card-label">LVO Cases</div></div>' +
-      '<div class="epi-card"><div class="epi-card-value">' + fmt(h.mt_eligible) + '</div><div class="epi-card-label">MT Eligible</div></div>' +
+      '<div class="epi-card"><div class="epi-card-value">' + fmt(h.mt_eligible) + '</div><div class="epi-card-label">MT Eligible' + src('70% of LVO — DAWN (NEJM 2018) & DEFUSE-3 (NEJM 2018) eligibility criteria') + '</div></div>' +
       '</div>';
 
     html += '<div class="prev-bar-container">' +
-      '<div class="prev-bar-label"><span class="prev-bar-name">Ischemic (216/100k eff. pop)</span><span class="prev-bar-val">' + fmt(h.ischemic_volume) + '/yr</span></div>' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">Ischemic (216/100k eff. pop)' + src('Rai AT et al. JNIS 2023;15:e349-e355') + '</span><span class="prev-bar-val">' + fmt(h.ischemic_volume) + '/yr</span></div>' +
       '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.ischemic_volume / maxIschemic * 100) + '%;background:var(--jnj-red);"></div></div>' +
       '</div>';
 
     html += '<div class="prev-bar-container">' +
-      '<div class="prev-bar-label"><span class="prev-bar-name">LVO (21% of ischemic)</span><span class="prev-bar-val">' + fmt(h.lvo_volume) + '/yr</span></div>' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">LVO (21% of ischemic)' + src('Rai AT et al. JNIS 2023 — 21% (95% CI 15-29%) of AIS have vascular occlusion') + '</span><span class="prev-bar-val">' + fmt(h.lvo_volume) + '/yr</span></div>' +
       '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.lvo_volume / maxLvo * 100) + '%;background:var(--jnj-blue);"></div></div>' +
       '</div>';
 
     html += '<div class="prev-bar-container">' +
-      '<div class="prev-bar-label"><span class="prev-bar-name">Hemorrhagic (12/100k)</span><span class="prev-bar-val">' + fmt(h.hemorrhagic_volume) + '/yr</span></div>' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">Hemorrhagic (12/100k)' + src('AHA Heart Disease & Stroke Statistics 2024 Update') + '</span><span class="prev-bar-val">' + fmt(h.hemorrhagic_volume) + '/yr</span></div>' +
       '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.hemorrhagic_volume / maxHemorrhagic * 100) + '%;background:#7C3AED;"></div></div>' +
       '</div>';
 
     html += '<div class="prev-bar-container">' +
-      '<div class="prev-bar-label"><span class="prev-bar-name">AVM/Aneurysm (12/100k)</span><span class="prev-bar-val">' + fmt(h.avm_aneurysm_volume) + '/yr</span></div>' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">AVM/Aneurysm (12/100k)' + src('GBD 2019 (Lancet Neurol 2021;20:795-820)') + '</span><span class="prev-bar-val">' + fmt(h.avm_aneurysm_volume) + '/yr</span></div>' +
       '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.avm_aneurysm_volume / maxAvm * 100) + '%;background:#059669;"></div></div>' +
       '</div>';
 
@@ -795,7 +836,7 @@ function openDrawer(idx) {
 
   // ── Geographic Access & Travel ──
   html += '<div class="drawer-section">' +
-    '<div class="drawer-section-title">Geographic Access & Travel</div>' +
+    '<div class="drawer-section-title">Geographic Access & Travel' + src('Haversine distance × 1.3 road factor ÷ 55 mph — closest team member') + '</div>' +
     '<div class="geo-access-badge ' + getGeoAccessClass(h.geographic_access) + '">' +
     getGeoAccessIcon(h.geographic_access) + ' ' + h.geographic_access +
     '</div>' +
@@ -812,6 +853,21 @@ function openDrawer(idx) {
   if (h.comment) {
     html += '<div style="margin-top:4px;padding:8px;background:#fffbeb;border-radius:6px;font-size:11px;color:#92400e;">💡 ' + h.comment + '</div>';
   }
+
+  // ── Data Sources Panel ──
+  html += '<div class="sources-panel" style="margin-top:16px;">' +
+    '<div class="sources-panel-title">Data Sources & Citations</div>' +
+    '<div class="sources-panel-item"><strong>[1]</strong> Bed counts: CMS Care Compare / American Hospital Directory (AHD.com) Medicare Cost Report</div>' +
+    '<div class="sources-panel-item"><strong>[2]</strong> Stroke certifications: Joint Commission QualityCheck / DNV GL Healthcare / FL AHCA CSC-PSC Registry</div>' +
+    '<div class="sources-panel-item"><strong>[3]</strong> Ischemic stroke rate (216/100k) & LVO prevalence (21%): Rai AT et al. <em>J Neurointerv Surg</em> 2023;15:e349-e355</div>' +
+    '<div class="sources-panel-item"><strong>[4]</strong> MT eligibility (70% of LVO): DAWN trial (<em>NEJM</em> 2018;378:11-21) & DEFUSE-3 (<em>NEJM</em> 2018;378:708-718)</div>' +
+    '<div class="sources-panel-item"><strong>[5]</strong> Hemorrhagic stroke (12/100k), SAH/ICH subtypes: AHA Heart Disease & Stroke Statistics 2024 Update</div>' +
+    '<div class="sources-panel-item"><strong>[6]</strong> AVM/Aneurysm (12/100k): Global Burden of Disease 2019 (<em>Lancet Neurol</em> 2021;20:795-820)</div>' +
+    '<div class="sources-panel-item"><strong>[7]</strong> Age 65+ stroke multiplier (2.5×): CDC MMWR 2019 age-adjusted stroke incidence data</div>' +
+    '<div class="sources-panel-item"><strong>[8]</strong> Demographics: US Census Bureau ACS 5-Year Estimates / CDC WONDER</div>' +
+    '<div class="sources-panel-item"><strong>[9]</strong> Travel times: Haversine formula × 1.3 road factor ÷ 55 mph average</div>' +
+    '<div class="sources-panel-item" style="margin-top:6px;color:#94a3b8;font-style:italic;">Hover over <span class="src-tip" style="pointer-events:none;">i</span> icons throughout for field-specific sources.</div>' +
+    '</div>';
 
   document.getElementById('drawerBody').innerHTML = html;
   document.getElementById('accountDrawer').classList.add('open');

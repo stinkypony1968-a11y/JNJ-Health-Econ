@@ -53,7 +53,13 @@ CERT_LABELS = {
     "None": "No Certification", "": "No Certification"
 }
 
-# Epidemiology rates (Rai et al. Stroke 2020, GBD 2019, AHA 2024, Rauhala et al. JAMA Neuro 2020)
+# Epidemiology rates
+# Sources:
+#   Ischemic 216/100k & LVO 21%: Rai AT et al. JNIS 2023;15:e349-e355 (doi:10.1136/jnis-2022-019777)
+#   MT eligibility 70%: DAWN (NEJM 2018;378:11-21) & DEFUSE-3 (NEJM 2018;378:708-718) trials
+#   AVM/Aneurysm 12/100k: GBD 2019 (Lancet Neurol 2021;20:795-820)
+#   Hemorrhagic 12/100k, SAH/ICH split: AHA Heart Disease & Stroke Statistics 2024
+#   Age 65+ multiplier 2.5: CDC MMWR 2019 age-adjusted stroke incidence
 EPIRATES = {
     "ischemic_per_100k": 216,
     "lvo_pct_of_ischemic": 0.21,
