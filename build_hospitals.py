@@ -20,7 +20,9 @@ headers = [
     "tPA Available", "Neuro ICU", "CT Scanner", "Spoke Hospital",
     "A-Fib Prevalence", "A-Fib Absolute Count", "MMAE Score",
     "Clinical Benefit Radius (km)",
-    "Medevac Available", "Road Access", "Comment"
+    "Medevac Available", "Road Access",
+    "GLP-1 Rx Rate", "GLP-1 Market Penetration", "GLP-1 Est Users",
+    "Comment"
 ]
 
 header_fill = PatternFill(start_color="00205B", end_color="00205B", fill_type="solid")
@@ -51,7 +53,9 @@ hospitals = [
      680000, 108800, 35.7, 75.2,
      False, True, True, True, True, True, False,
      2.7, 18360, 62, 35,
-     True, True, "Regional CSC hub — only Level I trauma in SE Georgia"],
+     True, True,
+     58.4, 22.1, 14960,
+     "Regional CSC hub — only Level I trauma in SE Georgia"],
 
     # 2 - 01544090 — AdventHealth Celebration (CSC entity)
     # Beds: ~400 (AdventHealth Celebration campus) | Cert: CSC (DNV GL Healthcare, 2019)
@@ -63,7 +67,9 @@ hospitals = [
      850000, 136000, 37.2, 79.5,
      False, True, True, True, True, True, False,
      2.8, 23800, 68, 35,
-     True, True, "AdventHealth system CSC campus — DNV certified 2019"],
+     True, True,
+     72.6, 26.8, 22780,
+     "AdventHealth system CSC campus — DNV certified 2019"],
 
     # 3 - 00002905 — Baptist Medical Center Jacksonville
     # Beds: 972 (CMS #100088, FloridaHealthFinder) | Cert: CSC (Joint Commission)
@@ -75,7 +81,9 @@ hospitals = [
      1750000, 310000, 37.5, 77.4,
      False, True, True, True, True, True, False,
      3.2, 56000, 72, 45,
-     True, True, "Flagship CSC — largest stroke program in NE Florida"],
+     True, True,
+     64.2, 24.3, 42350,
+     "Flagship CSC — largest stroke program in NE Florida"],
 
     # 4 - 01110024 — UF Health Shands Hospital, Gainesville
     # Beds: 1,162 (AHD/Wikipedia; CMS reports 1,095 licensed) | Cert: CSC (Joint Commission + AHA)
@@ -87,7 +95,9 @@ hospitals = [
      950000, 152000, 32.1, 78.6,
      False, True, True, True, True, True, False,
      2.8, 26600, 78, 50,
-     True, True, "Academic flagship — 1,043 stroke cases in 2024 (AHA data)"],
+     True, True,
+     55.8, 21.4, 18620,
+     "Academic flagship — 1,043 stroke cases in 2024 (AHA data)"],
 
     # 5 - 00004849 — UF Health Jacksonville (Shands Jax)
     # Beds: 695 (CMS/CareListings) | Cert: CSC (Joint Commission, FL AHCA Duval County)
@@ -99,7 +109,9 @@ hospitals = [
      1400000, 238000, 36.8, 76.9,
      False, True, True, True, True, True, False,
      2.9, 40600, 68, 40,
-     True, True, "Academic med center — TraumaOne helicopter stroke transport"],
+     True, True,
+     62.1, 23.7, 33880,
+     "Academic med center — TraumaOne helicopter stroke transport"],
 
     # 6 - 00002894 — St. Joseph's Hospital, Tampa
     # Beds: 883 (Wikipedia/Healthgrades) | Cert: CSC (DNV GL Healthcare)
@@ -111,7 +123,9 @@ hospitals = [
      1500000, 255000, 36.2, 78.0,
      False, True, True, True, True, True, False,
      3.1, 46500, 74, 45,
-     True, True, "Pepin Heart & Vascular Institute — BayCare system"],
+     True, True,
+     68.7, 25.6, 38250,
+     "Pepin Heart & Vascular Institute — BayCare system"],
 
     # 7 - 00005890 — Ascension St. Vincent's Riverside, Jacksonville
     # Beds: 528 (CMS/Vivian Health) | Cert: PSC (Joint Commission)
@@ -123,7 +137,9 @@ hospitals = [
      850000, 144500, 39.2, 78.1,
      False, True, False, True, True, True, False,
      2.5, 21250, 55, 30,
-     False, True, "Ranked #3 in Jacksonville by U.S. News 2025"],
+     False, True,
+     61.8, 23.1, 19640,
+     "Ranked #3 in Jacksonville by U.S. News 2025"],
 
     # 8 - 00006101 — HCA Florida North Florida Hospital (fka North Florida Regional)
     # Beds: 510 (HCA/FloridaHealthFinder) | Cert: CSC (Joint Commission — per HCA website)
@@ -135,7 +151,9 @@ hospitals = [
      480000, 81600, 34.5, 77.9,
      False, True, True, True, True, True, False,
      2.2, 10560, 48, 25,
-     False, True, "HCA facility — CSC certified, serves 14 surrounding counties"],
+     False, True,
+     54.3, 20.8, 10080,
+     "HCA facility — CSC certified, serves 14 surrounding counties"],
 
     # 9 - 00004852 — Tallahassee Memorial HealthCare
     # Beds: 772 (TMH website/LinkedIn) | Cert: CSC (FL AHCA designation 2016)
@@ -147,7 +165,9 @@ hospitals = [
      550000, 82500, 33.8, 77.5,
      False, True, True, True, True, True, False,
      2.4, 13200, 58, 35,
-     True, True, "Only CSC between Jacksonville and Pensacola — serves 21 counties"],
+     True, True,
+     49.6, 19.2, 10560,
+     "Only CSC between Jacksonville and Pensacola — serves 21 counties"],
 
     # 10 - 00004872 — Shands Teaching Hospital (second entity — UF Health satellite)
     # Beds: 240 (estimated satellite campus) | Cert: PSC
@@ -159,7 +179,9 @@ hospitals = [
      450000, 72000, 32.1, 78.6,
      False, True, False, True, True, True, True,
      2.0, 9000, 38, 20,
-     False, True, "Satellite of UF Health — spoke to main Shands CSC"],
+     False, True,
+     52.1, 20.3, 9130,
+     "Satellite of UF Health — spoke to main Shands CSC"],
 
     # 11 - 00004885 — HCA Florida Lake Monroe Hospital (fka Central FL Regional)
     # Beds: 221 (AHD #100161 / HCA website) | Cert: CSC (HCA website — Comprehensive Stroke Center)
@@ -171,7 +193,9 @@ hospitals = [
      350000, 63000, 39.5, 78.2,
      False, True, True, True, True, True, False,
      2.3, 8050, 35, 15,
-     False, True, "Award-winning cardiac and stroke programs — CSC certified"],
+     False, True,
+     66.4, 25.1, 8820,
+     "Award-winning cardiac and stroke programs — CSC certified"],
 
     # 12 - 00006121 — HCA Florida Lawnwood Hospital, Fort Pierce
     # Beds: 398 (CMS/CareListings range 398-497) | Cert: TCC (JC Advanced Thrombectomy Capable)
@@ -183,7 +207,9 @@ hospitals = [
      420000, 88200, 42.7, 77.0,
      False, True, True, True, True, True, False,
      2.6, 10920, 45, 25,
-     True, True, "Treasure Coast — only Advanced Thrombectomy Center in St. Lucie County"],
+     True, True,
+     74.8, 27.9, 10920,
+     "Treasure Coast — only Advanced Thrombectomy Center in St. Lucie County"],
 
     # 13 - 00004856 — Ascension Sacred Heart Bay (fka Bay Medical Sacred Heart)
     # Beds: 323 (FL HealthFinder/Yelp) | Cert: PSC (JC Advanced Primary Stroke)
@@ -195,7 +221,9 @@ hospitals = [
      280000, 47600, 39.8, 76.3,
      False, True, False, True, True, True, False,
      1.9, 5320, 38, 20,
-     True, True, "Panhandle Level II Trauma — nearest CSC is TMH (100+ mi)"],
+     True, True,
+     46.2, 18.4, 5150,
+     "Panhandle Level II Trauma — nearest CSC is TMH (100+ mi)"],
 
     # 14 - 00063314 — Mayo Clinic Hospital in Florida
     # Beds: 419 (AHD #100151 — expanded 2024) | Cert: CSC (Joint Commission)
@@ -207,7 +235,9 @@ hospitals = [
      900000, 171000, 42.1, 81.2,
      False, True, True, True, True, True, False,
      3.8, 34200, 85, 50,
-     True, True, "Ranked #1 in FL by U.S. News 2025 — expanded to 419 beds (2024)"],
+     True, True,
+     71.3, 26.4, 22140,
+     "Ranked #1 in FL by U.S. News 2025 — expanded to 419 beds (2024)"],
 
     # 15 - 01413658 — UF Health Heart & Vascular and Neuromedicine Hospitals
     # Beds: 216 (Skanska/UF Health — 120 cardiac + 96 neuro) | Cert: CSC (part of UF Shands system)
@@ -219,7 +249,9 @@ hospitals = [
      600000, 96000, 32.1, 78.6,
      False, True, True, True, True, True, False,
      2.6, 15600, 80, 40,
-     True, True, "Opened 2017 — 7 neuro ORs incl. 2 intraoperative MRI suites"],
+     True, True,
+     53.7, 20.9, 12540,
+     "Opened 2017 — 7 neuro ORs incl. 2 intraoperative MRI suites"],
 
     # 16 - 00004111 — Candler Hospital, Savannah GA
     # Beds: 320 (CMS/CareListings #110024) | Cert: PSC (Healthgrades Stroke Care Excellence)
@@ -231,7 +263,9 @@ hospitals = [
      380000, 64600, 37.2, 75.8,
      False, True, False, True, True, True, False,
      2.3, 8740, 42, 20,
-     False, True, "Second-oldest US hospital in continuous operation (est. 1804)"],
+     False, True,
+     56.7, 21.8, 8550,
+     "Second-oldest US hospital in continuous operation (est. 1804)"],
 
     # 17 - 00007912 — Malcom Randall VA Medical Center, Gainesville
     # Beds: 239 (UF Internal Med Residency / VA.gov — 1a High Complexity) | Cert: PSC
@@ -243,7 +277,9 @@ hospitals = [
      620000, 167400, 62.5, 74.8,
      False, True, False, True, True, True, True,
      4.2, 26040, 52, 30,
-     True, True, "VA 1a High Complexity — very high 65+ population"],
+     True, True,
+     82.4, 31.6, 26040,
+     "VA 1a High Complexity — very high 65+ population"],
 
     # 18 - 00004837 — Halifax Health Medical Center, Daytona Beach
     # Beds: 563 (CMS #100017 / CareListings) | Cert: TCC (JC Thrombectomy-Capable, renewed 2025)
@@ -255,7 +291,9 @@ hospitals = [
      580000, 110200, 43.6, 77.1,
      False, True, True, True, True, True, False,
      3.0, 17400, 60, 35,
-     True, True, "Thrombectomy-Capable cert renewed April 2025 — Level II Trauma"],
+     True, True,
+     76.3, 28.7, 17400,
+     "Thrombectomy-Capable cert renewed April 2025 — Level II Trauma"],
 
     # 19 - 00002906 — HCA Florida Memorial Hospital, Jacksonville
     # Beds: 454 (CMS #100179) | Cert: PSC (Certified Stroke Center)
@@ -267,7 +305,9 @@ hospitals = [
      700000, 119000, 38.4, 77.8,
      False, True, False, True, True, True, False,
      2.1, 14700, 48, 25,
-     False, True, "America's 250 Best Hospitals Award (Healthgrades)"],
+     False, True,
+     60.5, 22.8, 16100,
+     "America's 250 Best Hospitals Award (Healthgrades)"],
 
     # 20 - 00006091 — HCA Florida Orange Park Hospital (fka Orange Park Medical Center)
     # Beds: 365 (HCA website — Level II Trauma) | Cert: PSC (JC Advanced Primary Stroke, since 2009)
@@ -279,7 +319,9 @@ hospitals = [
      280000, 47600, 36.9, 77.2,
      False, True, False, True, False, True, True,
      1.8, 5040, 35, 15,
-     False, True, "Only Primary Stroke Center in Clay County — 6-county catchment"],
+     False, True,
+     57.3, 21.6, 5880,
+     "Only Primary Stroke Center in Clay County — 6-county catchment"],
 
     # 21 - 00028798 — AdventHealth Orlando
     # Beds: 2,247 (AdventHealth website — licensed; CMS shows 2,891 certified multi-campus)
@@ -292,7 +334,9 @@ hospitals = [
      2100000, 336000, 35.8, 79.1,
      False, True, True, True, True, True, False,
      3.4, 71400, 82, 50,
-     True, True, "3rd largest US hospital — $660M expansion adding 440 beds (2025)"],
+     True, True,
+     69.8, 25.9, 54180,
+     "3rd largest US hospital — $660M expansion adding 440 beds (2025)"],
 ]
 
 for row_idx, row_data in enumerate(hospitals, 2):

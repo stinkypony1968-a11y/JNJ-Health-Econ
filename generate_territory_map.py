@@ -40,6 +40,7 @@ OPTIONAL_COLUMNS = [
     "A-Fib Prevalence", "A-Fib Absolute Count", "MMAE Score",
     "Clinical Benefit Radius (km)",
     "Medevac Available", "Road Access",
+    "GLP-1 Rx Rate", "GLP-1 Market Penetration", "GLP-1 Est Users",
     "Comment"
 ]
 
@@ -217,6 +218,11 @@ def enrich_hospital(h):
     h["medevac_available"] = safe_bool(h.get("Medevac Available"))
     h["road_access"] = safe_bool(h.get("Road Access"), default=True)
 
+    # GLP-1 RA usage (optional)
+    h["glp1_rx_rate"] = safe_float(h.get("GLP-1 Rx Rate"))
+    h["glp1_market_penetration"] = safe_float(h.get("GLP-1 Market Penetration"))
+    h["glp1_est_users"] = safe_int(h.get("GLP-1 Est Users"))
+
     return h
 
 
@@ -306,6 +312,7 @@ def serialize_hospital(h):
         "neuro_icu", "ct_scanner", "spoke_hospital",
         "infrastructure_score", "clinical_tier", "clinical_tier_label",
         "medevac_available", "road_access", "geographic_access",
+        "glp1_rx_rate", "glp1_market_penetration", "glp1_est_users",
         "travel_miles", "travel_time_min", "closest_team_member", "comment"
     ]
     return {k: h.get(k) for k in keys}
