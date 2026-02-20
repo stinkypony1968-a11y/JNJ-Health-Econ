@@ -123,7 +123,20 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .card-stat-value { font-weight: 600; color: var(--jnj-navy); }
 .card-infra-score {
   margin-left: auto; font-size: 13px; font-weight: 700; padding: 2px 8px;
-  border-radius: 4px; background: #f1f5f9;
+  border-radius: 4px; background: #f1f5f9; position: relative; cursor: help;
+}
+.card-infra-score:hover::after {
+  content: 'Infrastructure Score (0-100): Cert level (up to 25) + 24/7 Thrombectomy (15) + Neuro ICU (12) + CAH (10) + CT (8) + Telestroke (8) + tPA (5) + Fellowships (15) + Volume bonus (10)';
+  position: absolute; bottom: 120%; right: 0;
+  background: var(--jnj-navy); color: white; padding: 8px 10px;
+  border-radius: 6px; font-size: 10px; font-weight: 400;
+  font-family: 'Inter', sans-serif; white-space: normal; width: 260px;
+  line-height: 1.4; z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: none;
+}
+.card-infra-score:hover::before {
+  content: ''; position: absolute; bottom: 110%; right: 12px;
+  border: 5px solid transparent; border-top-color: var(--jnj-navy); z-index: 9999;
 }
 
 /* ── Map Container ──────────────────────────────────────────────────── */
@@ -1217,7 +1230,7 @@ function openDrawer(idx) {
     '</div></div>' +
     '<div class="infra-gauge-info">' +
     '<div class="infra-tier-badge" style="background:' + tierColor + '">Tier ' + h.clinical_tier + ' — ' + h.clinical_tier_label + '</div>' +
-    '<div class="infra-tier-desc">Infrastructure Score: ' + h.infrastructure_score + '/100</div>' +
+    '<div class="infra-tier-desc">Infrastructure Score: ' + h.infrastructure_score + '/100' + src('Weighted composite: Cert level (CSC 25, PSC 20, TSC 15, None 5) + 24/7 Thrombectomy (15) + Neuro ICU (12) + CAH (10) + CT Scanner (8) + Telestroke (8) + tPA (5) + Neuro IR Fellowship (8) + NSG Fellowship (7) + Volume bonus (up to 10)') + '</div>' +
     '<div style="font-size:11px;color:#94a3b8;margin-top:2px;">' + cadenceMap[h.clinical_tier] + ' cadence recommended</div>' +
     '</div></div></div>';
 
