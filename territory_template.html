@@ -17,16 +17,16 @@
   --jnj-blue: #0077C8;
   --jnj-dark: #001A47;
   --sidebar-width: 380px;
-  --drawer-width: 440px;
+  --drawer-width: 460px;
   --analytics-height: 64px;
   --header-height: 56px;
   --cert-csc: #EB1700;
   --cert-psc: #F59E0B;
   --cert-tsc: #0077C8;
   --cert-none: #6B7280;
-  --tps-high: #059669;
-  --tps-mid: #F59E0B;
-  --tps-low: #6B7280;
+  --tier-1: #059669;
+  --tier-2: #F59E0B;
+  --tier-3: #6B7280;
   --dept-physician: #0077C8;
   --dept-stroke: #EB1700;
   --dept-education: #7C3AED;
@@ -57,16 +57,13 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .header-btn {
   background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
   color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px;
-  font-weight: 500; cursor: pointer; transition: all 0.15s;
-  font-family: inherit;
+  font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: inherit;
 }
 .header-btn:hover { background: rgba(255,255,255,0.2); }
 .header-btn.active { background: var(--jnj-blue); border-color: var(--jnj-blue); }
 
 /* ── Main Layout ────────────────────────────────────────────────────── */
-.main-container {
-  flex: 1; display: flex; position: relative; overflow: hidden;
-}
+.main-container { flex: 1; display: flex; position: relative; overflow: hidden; }
 
 /* ── Left Sidebar ───────────────────────────────────────────────────── */
 .sidebar {
@@ -80,8 +77,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 }
 .sidebar-search:focus { border-color: var(--jnj-blue); }
 .sidebar-filters {
-  display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid #e2e8f0;
-  flex-wrap: wrap;
+  display: flex; gap: 4px; padding: 8px 16px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap;
 }
 .filter-btn {
   padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;
@@ -98,9 +94,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   border: none; font-size: 11px; color: var(--jnj-navy); font-weight: 500;
   cursor: pointer; font-family: inherit; outline: none; background: transparent;
 }
-.sidebar-list {
-  flex: 1; overflow-y: auto; padding: 8px;
-}
+.sidebar-list { flex: 1; overflow-y: auto; padding: 8px; }
 .sidebar-list::-webkit-scrollbar { width: 5px; }
 .sidebar-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
@@ -124,16 +118,17 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   letter-spacing: 0.3px; white-space: nowrap;
 }
 .badge-cert { color: white; }
-.badge-tier { background: #f1f5f9; color: #475569; }
+.badge-tier { color: white; }
 .card-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: #64748b; margin-bottom: 6px; padding-left: 30px; }
 .card-meta span { display: flex; align-items: center; gap: 3px; }
-.card-nts { display: flex; gap: 12px; padding-left: 30px; }
-.card-nts-item { font-size: 11px; }
-.card-nts-label { color: #94a3b8; }
-.card-nts-value { font-weight: 600; color: var(--jnj-navy); }
-.card-growth { font-weight: 600; font-size: 11px; margin-left: auto; padding-left: 30px; }
-.card-growth.positive { color: #059669; }
-.card-growth.negative { color: #dc2626; }
+.card-stats { display: flex; gap: 12px; padding-left: 30px; align-items: center; }
+.card-stat-item { font-size: 11px; }
+.card-stat-label { color: #94a3b8; }
+.card-stat-value { font-weight: 600; color: var(--jnj-navy); }
+.card-infra-score {
+  margin-left: auto; font-size: 13px; font-weight: 700; padding: 2px 8px;
+  border-radius: 4px; background: #f1f5f9;
+}
 
 /* ── Map Container ──────────────────────────────────────────────────── */
 .map-container { flex: 1; position: relative; }
@@ -193,26 +188,35 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   color: #94a3b8; margin-bottom: 10px; padding-bottom: 6px;
   border-bottom: 1px solid #f1f5f9;
 }
-.detail-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-}
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .detail-item { }
 .detail-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
 .detail-value { font-size: 13px; font-weight: 600; color: var(--jnj-navy); }
 
-/* TPS gauge */
-.tps-gauge-container { display: flex; align-items: center; gap: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; }
-.tps-gauge {
+/* Infrastructure gauge */
+.infra-gauge-container { display: flex; align-items: center; gap: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; }
+.infra-gauge {
   width: 64px; height: 64px; border-radius: 50%; position: relative;
   display: flex; align-items: center; justify-content: center;
 }
-.tps-gauge-value { font-size: 20px; font-weight: 800; }
-.tps-gauge-info { flex: 1; }
-.tps-segment-badge {
+.infra-gauge-value { font-size: 20px; font-weight: 800; }
+.infra-gauge-info { flex: 1; }
+.infra-tier-badge {
   display: inline-block; padding: 3px 10px; border-radius: 4px;
   font-size: 11px; font-weight: 700; color: white; margin-bottom: 4px;
 }
-.tps-strategy { font-size: 12px; color: #64748b; }
+.infra-tier-desc { font-size: 12px; color: #64748b; }
+
+/* Infrastructure checklist */
+.infra-checklist { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.infra-check-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  background: #f8fafc; border-radius: 6px; font-size: 12px;
+}
+.infra-check-icon { font-size: 14px; flex-shrink: 0; }
+.infra-check-icon.yes { color: #059669; }
+.infra-check-icon.no { color: #dc2626; opacity: 0.4; }
+.infra-check-label { color: #475569; font-weight: 500; }
 
 /* Prevalence bars */
 .prev-bar-container { margin-bottom: 8px; }
@@ -222,18 +226,24 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .prev-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
 .prev-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
 
-/* Business plan */
-.biz-plan { background: #f8fafc; border-radius: 8px; padding: 12px; }
-.biz-plan-title { font-size: 13px; font-weight: 600; color: var(--jnj-navy); margin-bottom: 8px; }
-.biz-plan-items { list-style: none; }
-.biz-plan-items li {
-  font-size: 12px; color: #475569; padding: 4px 0; padding-left: 16px;
-  position: relative; line-height: 1.4;
+/* Epi summary cards */
+.epi-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.epi-card {
+  text-align: center; padding: 10px 6px; background: #f8fafc; border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
-.biz-plan-items li::before {
-  content: ''; position: absolute; left: 0; top: 10px;
-  width: 6px; height: 6px; border-radius: 50%; background: var(--jnj-blue);
+.epi-card-value { font-size: 18px; font-weight: 800; color: var(--jnj-navy); }
+.epi-card-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* Geographic access badge */
+.geo-access-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 8px;
 }
+.geo-access-badge.local { background: #ecfdf5; color: #059669; }
+.geo-access-badge.short { background: #eff6ff; color: #2563eb; }
+.geo-access-badge.long { background: #fffbeb; color: #d97706; }
+.geo-access-badge.flight { background: #fef2f2; color: #dc2626; }
 
 /* ── Calendar Panel ─────────────────────────────────────────────────── */
 .calendar-panel {
@@ -264,22 +274,18 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   display: flex; align-items: center; gap: 4px; background: #f1f5f9;
 }
 .cal-dept-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-
-/* Cadence legend */
 .cadence-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .cadence-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #64748b; }
 
 /* ── Bottom Analytics Bar ───────────────────────────────────────────── */
 .analytics-bar {
   height: var(--analytics-height); background: white; border-top: 1px solid #e2e8f0;
-  display: flex; align-items: center; padding: 0 20px; gap: 24px; z-index: 500;
+  display: flex; align-items: center; padding: 0 20px; gap: 20px; z-index: 500;
   box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
 }
 .analytics-item { display: flex; flex-direction: column; align-items: center; }
 .analytics-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 .analytics-value { font-size: 15px; font-weight: 700; color: var(--jnj-navy); }
-.analytics-value.positive { color: #059669; }
-.analytics-value.negative { color: #dc2626; }
 .analytics-divider { width: 1px; height: 36px; background: #e2e8f0; }
 .analytics-mini-bar { display: flex; gap: 2px; align-items: flex-end; height: 28px; }
 .analytics-mini-bar-item { width: 18px; border-radius: 2px 2px 0 0; position: relative; }
@@ -287,11 +293,6 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
   font-size: 8px; color: #94a3b8; white-space: nowrap;
 }
-.analytics-gauge {
-  width: 40px; height: 40px; border-radius: 50%; position: relative;
-  display: flex; align-items: center; justify-content: center;
-}
-.analytics-gauge-value { font-size: 10px; font-weight: 700; color: var(--jnj-navy); }
 
 /* ── Toast ──────────────────────────────────────────────────────────── */
 .toast-container {
@@ -327,7 +328,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
-  :root { --sidebar-width: 320px; --drawer-width: 380px; }
+  :root { --sidebar-width: 320px; --drawer-width: 400px; }
 }
 @media (max-width: 1024px) {
   :root { --sidebar-width: 280px; --drawer-width: 100%; }
@@ -370,10 +371,10 @@ body { display: flex; flex-direction: column; overflow: hidden; }
     <div class="sidebar-sort">
       Sort by:
       <select class="sort-select" id="sortSelect">
-        <option value="nts_2025">NTS 2025 ↓</option>
-        <option value="tps_score">TPS Score ↓</option>
-        <option value="yoy_growth">YoY Growth ↓</option>
-        <option value="strokes_yr">Stroke Vol ↓</option>
+        <option value="infrastructure_score">Infra Score ↓</option>
+        <option value="strokes_yr">Strokes/Yr ↓</option>
+        <option value="lvo_volume">LVO Volume ↓</option>
+        <option value="beds">Beds ↓</option>
         <option value="name">Name A-Z</option>
       </select>
     </div>
@@ -416,37 +417,43 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   </div>
   <div class="analytics-divider"></div>
   <div class="analytics-item">
-    <span class="analytics-label">NTS 2025</span>
-    <span class="analytics-value">${{ "{:,}".format(total_nts_2025) }}</span>
+    <span class="analytics-label">Total Beds</span>
+    <span class="analytics-value">{{ "{:,}".format(total_beds) }}</span>
   </div>
   <div class="analytics-divider"></div>
   <div class="analytics-item">
-    <span class="analytics-label">NTS 2026 Ann.</span>
-    <span class="analytics-value">${{ "{:,}".format(total_nts_2026_ann) }}</span>
+    <span class="analytics-label">Strokes/Yr</span>
+    <span class="analytics-value">{{ "{:,}".format(total_strokes_yr) }}</span>
   </div>
   <div class="analytics-divider"></div>
   <div class="analytics-item">
-    <span class="analytics-label">YoY Growth</span>
-    <span class="analytics-value {{ 'positive' if territory_yoy > 0 else 'negative' }}">{{ territory_yoy }}%</span>
+    <span class="analytics-label">Est. LVO</span>
+    <span class="analytics-value">{{ "{:,}".format(total_lvo) }}</span>
   </div>
   <div class="analytics-divider"></div>
   <div class="analytics-item">
-    <span class="analytics-label">Avg TPS</span>
-    <span class="analytics-value">{{ avg_tps }}</span>
+    <span class="analytics-label">MT Eligible</span>
+    <span class="analytics-value">{{ "{:,}".format(total_mt_eligible) }}</span>
   </div>
   <div class="analytics-divider"></div>
   <div class="analytics-item">
-    <span class="analytics-label">TPS Distribution</span>
-    <div class="analytics-mini-bar">
-      <div class="analytics-mini-bar-item" style="height:{{ [tps_dist.HIGH * 6, 4]|max }}px; background:var(--tps-high);"><span class="analytics-mini-bar-label">H:{{ tps_dist.HIGH }}</span></div>
-      <div class="analytics-mini-bar-item" style="height:{{ [tps_dist.MID * 6, 4]|max }}px; background:var(--tps-mid);"><span class="analytics-mini-bar-label">M:{{ tps_dist.MID }}</span></div>
-      <div class="analytics-mini-bar-item" style="height:{{ [tps_dist.LOW * 6, 4]|max }}px; background:var(--tps-low);"><span class="analytics-mini-bar-label">L:{{ tps_dist.LOW }}</span></div>
-    </div>
+    <span class="analytics-label">Certs</span>
+    <span class="analytics-value" style="font-size:11px;">CSC:{{ cert_counts.CSC }} · PSC:{{ cert_counts.PSC }} · TSC:{{ cert_counts.TSC + cert_counts.TCC }}</span>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">Capabilities</span>
+    <span class="analytics-value" style="font-size:11px;">24/7 MT:{{ thrombectomy_count }} · NICU:{{ neuro_icu_count }} · Tele:{{ telestroke_count }}</span>
   </div>
   <div class="analytics-divider"></div>
   <div class="analytics-item">
     <span class="analytics-label">Tiers</span>
     <span class="analytics-value" style="font-size:12px;">T1:{{ tier_counts[1] }} · T2:{{ tier_counts[2] }} · T3:{{ tier_counts[3] }}</span>
+  </div>
+  <div class="analytics-divider"></div>
+  <div class="analytics-item">
+    <span class="analytics-label">Avg Infra</span>
+    <span class="analytics-value">{{ avg_infra }}</span>
   </div>
   <div style="flex:1;"></div>
   <div class="analytics-item" style="opacity:0.5;">
@@ -491,27 +498,40 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
 let markers = {};
 let selectedHospital = null;
 let activeFilter = 'all';
-let activeSortKey = 'nts_2025';
+let activeSortKey = 'infrastructure_score';
 
 // ── Utility Functions ──
 function fmt(n) { return n != null ? n.toLocaleString() : '—'; }
-function fmtMoney(n) { return n != null ? '$' + n.toLocaleString() : '—'; }
 
 function getCertColor(cert) {
   const colors = { CSC: '#EB1700', PSC: '#F59E0B', TSC: '#0077C8', TCC: '#0077C8' };
   return colors[cert] || '#6B7280';
 }
 
-function getTpsColor(segment) {
-  const colors = { HIGH: '#059669', MID: '#F59E0B', LOW: '#6B7280' };
-  return colors[segment] || '#6B7280';
+function getTierColor(tier) {
+  const colors = { 1: '#059669', 2: '#F59E0B', 3: '#6B7280' };
+  return colors[tier] || '#6B7280';
 }
 
-function markerSize(nts) {
-  const maxNts = Math.max(...HOSPITALS.map(h => h.nts_2025));
+function getGeoAccessClass(access) {
+  const map = { 'Local': 'local', 'Short': 'short', 'Long': 'long', 'Flight Required': 'flight' };
+  return map[access] || 'short';
+}
+
+function getGeoAccessIcon(access) {
+  const map = { 'Local': '📍', 'Short': '🚗', 'Long': '🚙', 'Flight Required': '✈️' };
+  return map[access] || '📍';
+}
+
+function markerSize(strokes) {
+  const maxStrokes = Math.max(...HOSPITALS.map(h => h.strokes_yr));
   const minSize = 18, maxSize = 42;
-  if (maxNts === 0) return minSize;
-  return Math.round(minSize + (nts / maxNts) * (maxSize - minSize));
+  if (maxStrokes === 0) return minSize;
+  return Math.round(minSize + (strokes / maxStrokes) * (maxSize - minSize));
+}
+
+function checkIcon(val) {
+  return val ? '<span class="infra-check-icon yes">✓</span>' : '<span class="infra-check-icon no">✗</span>';
 }
 
 // ── Toast ──
@@ -531,10 +551,10 @@ function showToast(msg) {
 // ── Create Markers ──
 function createMarkers() {
   HOSPITALS.forEach((h, i) => {
-    const size = markerSize(h.nts_2025);
+    const size = markerSize(h.strokes_yr);
     const icon = L.divIcon({
       className: '',
-      html: `<div class="hospital-marker${h.tier === 1 ? ' tier-1' : ''}" style="width:${size}px;height:${size}px;background:${getCertColor(h.cert)};">${h.tier}</div>`,
+      html: '<div class="hospital-marker' + (h.clinical_tier === 1 ? ' tier-1' : '') + '" style="width:' + size + 'px;height:' + size + 'px;background:' + getCertColor(h.cert) + ';">' + h.clinical_tier + '</div>',
       iconSize: [size, size],
       iconAnchor: [size/2, size/2]
     });
@@ -546,22 +566,19 @@ function createMarkers() {
 }
 
 function openPopup(h, marker) {
-  const growthClass = h.yoy_growth > 0 ? 'positive' : 'negative';
-  const growthIcon = h.yoy_growth > 0 ? '↑' : '↓';
-  const popupHtml = `
-    <div class="popup-inner">
-      <div class="popup-name">${h.short_name}</div>
-      <div class="popup-cert"><span class="badge badge-cert" style="background:${getCertColor(h.cert)}">${h.cert || 'None'}</span>
-        <span class="badge badge-tier">Tier ${h.tier}</span></div>
-      <div class="popup-stats">
-        <div><div class="popup-stat-label">Beds</div><div class="popup-stat-value">${fmt(h.beds)}</div></div>
-        <div><div class="popup-stat-label">Strokes/Yr</div><div class="popup-stat-value">${fmt(h.strokes_yr)}</div></div>
-        <div><div class="popup-stat-label">NTS 2025</div><div class="popup-stat-value">${fmtMoney(h.nts_2025)}</div></div>
-        <div><div class="popup-stat-label">YoY</div><div class="popup-stat-value" style="color:${h.yoy_growth > 0 ? '#059669' : '#dc2626'}">${growthIcon} ${Math.abs(h.yoy_growth)}%</div></div>
-      </div>
-      <div style="margin-top:6px;"><div class="popup-stat-label">TPS</div><div class="popup-stat-value">${h.tps_score} <span style="font-size:10px;color:${getTpsColor(h.tps_segment)}">${h.tps_segment}</span></div></div>
-      <button class="popup-btn" onclick="openDrawer(${HOSPITALS.indexOf(h)})">View Full Profile →</button>
-    </div>`;
+  const tierColor = getTierColor(h.clinical_tier);
+  const popupHtml = '<div class="popup-inner">' +
+    '<div class="popup-name">' + h.short_name + '</div>' +
+    '<div class="popup-cert"><span class="badge badge-cert" style="background:' + getCertColor(h.cert) + '">' + (h.cert || 'None') + '</span> ' +
+    '<span class="badge badge-tier" style="background:' + tierColor + '">Tier ' + h.clinical_tier + '</span></div>' +
+    '<div class="popup-stats">' +
+    '<div><div class="popup-stat-label">Beds</div><div class="popup-stat-value">' + fmt(h.beds) + '</div></div>' +
+    '<div><div class="popup-stat-label">Strokes/Yr</div><div class="popup-stat-value">' + fmt(h.strokes_yr) + '</div></div>' +
+    '<div><div class="popup-stat-label">Est. LVO</div><div class="popup-stat-value">' + fmt(h.lvo_volume) + '</div></div>' +
+    '<div><div class="popup-stat-label">Infra Score</div><div class="popup-stat-value">' + h.infrastructure_score + '</div></div>' +
+    '</div>' +
+    '<button class="popup-btn" onclick="openDrawer(' + HOSPITALS.indexOf(h) + ')">View Full Profile →</button>' +
+    '</div>';
   marker.bindPopup(popupHtml, { maxWidth: 280 }).openPopup();
 }
 
@@ -602,30 +619,27 @@ function renderCards() {
   list.innerHTML = filtered.map((h, rank) => {
     const idx = HOSPITALS.indexOf(h);
     const isSelected = selectedHospital === idx;
-    const growthClass = h.yoy_growth > 0 ? 'positive' : 'negative';
-    return `
-      <div class="hospital-card${isSelected ? ' selected' : ''}" onclick="selectHospital(${idx})" data-idx="${idx}">
-        <div class="card-header">
-          <div class="card-rank">${rank + 1}</div>
-          <div class="card-name">${h.name}</div>
-          <div class="card-badges">
-            <span class="badge badge-cert" style="background:${getCertColor(h.cert)}">${h.cert || '—'}</span>
-            <span class="badge badge-tier">T${h.tier}</span>
-          </div>
-        </div>
-        <div class="card-meta">
-          <span>${fmt(h.beds)} beds</span>
-          <span>${fmt(h.strokes_yr)} strokes/yr</span>
-          <span>${h.affiliation}</span>
-        </div>
-        <div style="display:flex;align-items:center;">
-          <div class="card-nts">
-            <div class="card-nts-item"><span class="card-nts-label">NTS 25: </span><span class="card-nts-value">${fmtMoney(h.nts_2025)}</span></div>
-            <div class="card-nts-item"><span class="card-nts-label">YTD 26: </span><span class="card-nts-value">${fmtMoney(h.nts_2026_ytd)}</span></div>
-          </div>
-          <div class="card-growth ${growthClass}" style="margin-left:auto;">${h.yoy_growth > 0 ? '↑' : '↓'} ${Math.abs(h.yoy_growth)}%</div>
-        </div>
-      </div>`;
+    const tierColor = getTierColor(h.clinical_tier);
+    return '<div class="hospital-card' + (isSelected ? ' selected' : '') + '" onclick="selectHospital(' + idx + ')" data-idx="' + idx + '">' +
+      '<div class="card-header">' +
+      '<div class="card-rank">' + (rank + 1) + '</div>' +
+      '<div class="card-name">' + h.name + '</div>' +
+      '<div class="card-badges">' +
+      '<span class="badge badge-cert" style="background:' + getCertColor(h.cert) + '">' + (h.cert || '—') + '</span>' +
+      '<span class="badge badge-tier" style="background:' + tierColor + '">T' + h.clinical_tier + '</span>' +
+      '</div></div>' +
+      '<div class="card-meta">' +
+      '<span>' + fmt(h.beds) + ' beds</span>' +
+      '<span>' + fmt(h.strokes_yr) + ' strokes/yr</span>' +
+      '<span>' + h.affiliation + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;">' +
+      '<div class="card-stats">' +
+      '<div class="card-stat-item"><span class="card-stat-label">LVO: </span><span class="card-stat-value">' + fmt(h.lvo_volume) + '</span></div>' +
+      '<div class="card-stat-item"><span class="card-stat-label">MT: </span><span class="card-stat-value">' + fmt(h.mt_eligible) + '</span></div>' +
+      '</div>' +
+      '<div class="card-infra-score" style="color:' + tierColor + '">IS: ' + h.infrastructure_score + '</div>' +
+      '</div></div>';
   }).join('');
 }
 
@@ -644,160 +658,165 @@ function openDrawer(idx) {
   selectedHospital = idx;
   document.getElementById('drawerTitle').textContent = h.short_name;
 
-  const tpsColor = getTpsColor(h.tps_segment);
+  const tierColor = getTierColor(h.clinical_tier);
   const certColor = getCertColor(h.cert);
 
-  // Business plan based on segment
-  const plans = {
-    HIGH: {
-      title: 'Invest & Grow',
-      items: [
-        'Schedule weekly touchpoints with neuro IR and stroke teams',
-        'Coordinate product evaluation trials for new devices',
-        'Host quarterly clinical education events (grand rounds, case reviews)',
-        'Develop joint clinical protocols with department heads',
-        'Track utilization metrics and expand product portfolio',
-        'Engage fellowship programs with training partnerships'
-      ]
-    },
-    MID: {
-      title: 'Develop & Build',
-      items: [
-        'Increase visit cadence to twice monthly',
-        'Identify clinical champions and engage key decision-makers',
-        'Conduct product in-services with nursing and tech staff',
-        'Present clinical data and outcomes studies',
-        'Target competitive conversion opportunities',
-        'Build relationships with VAC and supply chain contacts'
-      ]
-    },
-    LOW: {
-      title: 'Monitor & Nurture',
-      items: [
-        'Maintain monthly check-in cadence',
-        'Monitor for program growth or leadership changes',
-        'Provide responsive clinical support as needed',
-        'Track competitive landscape and market shifts',
-        'Assess quarterly for segment reclassification',
-        'Maintain basic product awareness and availability'
-      ]
+  // Prevalence max values for bar scaling
+  const maxLvo = Math.max(...HOSPITALS.map(x => x.lvo_volume || 0)) || 1;
+  const maxIschemic = Math.max(...HOSPITALS.map(x => x.ischemic_volume || 0)) || 1;
+  const maxHemorrhagic = Math.max(...HOSPITALS.map(x => x.hemorrhagic_volume || 0)) || 1;
+  const maxAvm = Math.max(...HOSPITALS.map(x => x.avm_aneurysm_volume || 0)) || 1;
+
+  const cadenceMap = { 1: 'Weekly', 2: 'Twice/Month', 3: 'Monthly' };
+
+  let html = '';
+
+  // ── Hospital Profile ──
+  html += '<div class="drawer-section">' +
+    '<div class="drawer-section-title">Hospital Profile</div>' +
+    '<div class="detail-grid">' +
+    '<div class="detail-item"><div class="detail-label">Full Name</div><div class="detail-value" style="font-size:12px;">' + h.name + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Certification</div><div class="detail-value"><span class="badge badge-cert" style="background:' + certColor + '">' + (h.cert || 'None') + '</span>' + (h.cert_body ? ' <span style="font-size:10px;color:#94a3b8;">' + h.cert_body + '</span>' : '') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Licensed Beds</div><div class="detail-value">' + fmt(h.beds) + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Strokes/Year</div><div class="detail-value">' + fmt(h.strokes_yr) + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Affiliation</div><div class="detail-value" style="font-size:12px;">' + h.affiliation + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">GPO</div><div class="detail-value" style="font-size:12px;">' + h.gpo + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value" style="font-size:12px;">' + h.phone + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">IR Phone</div><div class="detail-value" style="font-size:12px;">' + (h.ir_phone || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Address</div><div class="detail-value" style="font-size:11px;">' + h.address + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">County</div><div class="detail-value" style="font-size:12px;">' + h.county + '</div></div>' +
+    '</div></div>';
+
+  // ── Clinical Programs ──
+  html += '<div class="drawer-section">' +
+    '<div class="drawer-section-title">Clinical Programs</div>' +
+    '<div class="detail-grid">' +
+    '<div class="detail-item"><div class="detail-label">Neurosurgery Fellowship</div><div class="detail-value">' + (h.nsg_fellowship ? '✓ Yes' : '✗ No') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Neuro IR Fellowship</div><div class="detail-value">' + (h.nir_fellowship ? '✓ Yes' : '✗ No') + '</div></div>' +
+    '</div></div>';
+
+  // ── Infrastructure Score & Tier ──
+  html += '<div class="drawer-section">' +
+    '<div class="drawer-section-title">Clinical Priority</div>' +
+    '<div class="infra-gauge-container">' +
+    '<div class="infra-gauge" style="background: conic-gradient(' + tierColor + ' ' + (h.infrastructure_score * 3.6) + 'deg, #e2e8f0 0);">' +
+    '<div style="width:48px;height:48px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;">' +
+    '<span class="infra-gauge-value" style="color:' + tierColor + '">' + h.infrastructure_score + '</span>' +
+    '</div></div>' +
+    '<div class="infra-gauge-info">' +
+    '<div class="infra-tier-badge" style="background:' + tierColor + '">Tier ' + h.clinical_tier + ' — ' + h.clinical_tier_label + '</div>' +
+    '<div class="infra-tier-desc">Infrastructure Score: ' + h.infrastructure_score + '/100</div>' +
+    '<div style="font-size:11px;color:#94a3b8;margin-top:2px;">' + cadenceMap[h.clinical_tier] + ' cadence recommended</div>' +
+    '</div></div></div>';
+
+  // ── Infrastructure Checklist ──
+  html += '<div class="drawer-section">' +
+    '<div class="drawer-section-title">Infrastructure Checklist</div>' +
+    '<div class="infra-checklist">' +
+    '<div class="infra-check-item">' + checkIcon(h.thrombectomy_24_7) + '<span class="infra-check-label">24/7 Thrombectomy</span></div>' +
+    '<div class="infra-check-item">' + checkIcon(h.neuro_icu) + '<span class="infra-check-label">Neuro ICU</span></div>' +
+    '<div class="infra-check-item">' + checkIcon(h.ct_scanner) + '<span class="infra-check-label">CT Scanner</span></div>' +
+    '<div class="infra-check-item">' + checkIcon(h.tpa_available) + '<span class="infra-check-label">tPA Available</span></div>' +
+    '<div class="infra-check-item">' + checkIcon(h.telestroke) + '<span class="infra-check-label">Telestroke</span></div>' +
+    '<div class="infra-check-item">' + checkIcon(h.cah) + '<span class="infra-check-label">Critical Access</span></div>' +
+    '<div class="infra-check-item">' + checkIcon(h.spoke_hospital) + '<span class="infra-check-label">Spoke Hospital</span></div>' +
+    '<div class="infra-check-item">' + checkIcon(h.medevac_available) + '<span class="infra-check-label">Medevac</span></div>' +
+    '</div></div>';
+
+  // ── Catchment Demographics ──
+  if (h.pop_total > 0) {
+    html += '<div class="drawer-section">' +
+      '<div class="drawer-section-title">Catchment Demographics</div>' +
+      '<div class="detail-grid" style="margin-bottom:12px;">' +
+      '<div class="detail-item"><div class="detail-label">Total Population</div><div class="detail-value">' + fmt(h.pop_total) + '</div></div>' +
+      '<div class="detail-item"><div class="detail-label">Population 65+</div><div class="detail-value">' + fmt(h.pop_65_plus) + ' (' + h.pop_65_pct + '%)</div></div>' +
+      '<div class="detail-item"><div class="detail-label">Effective Population</div><div class="detail-value">' + fmt(h.effective_pop) + '</div></div>' +
+      '<div class="detail-item"><div class="detail-label">Median Age</div><div class="detail-value">' + (h.median_age || '—') + '</div></div>' +
+      '<div class="detail-item"><div class="detail-label">Life Expectancy</div><div class="detail-value">' + (h.life_expectancy || '—') + '</div></div>' +
+      '</div></div>';
+  }
+
+  // ── Stroke Epidemiology ──
+  html += '<div class="drawer-section">' +
+    '<div class="drawer-section-title">Stroke Epidemiology (Estimated)</div>';
+
+  if (h.ischemic_volume > 0 || h.strokes_yr > 0) {
+    html += '<div class="epi-summary">' +
+      '<div class="epi-card"><div class="epi-card-value">' + fmt(h.ischemic_volume) + '</div><div class="epi-card-label">Ischemic/Yr</div></div>' +
+      '<div class="epi-card"><div class="epi-card-value">' + fmt(h.lvo_volume) + '</div><div class="epi-card-label">LVO Cases</div></div>' +
+      '<div class="epi-card"><div class="epi-card-value">' + fmt(h.mt_eligible) + '</div><div class="epi-card-label">MT Eligible</div></div>' +
+      '</div>';
+
+    html += '<div class="prev-bar-container">' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">Ischemic (216/100k eff. pop)</span><span class="prev-bar-val">' + fmt(h.ischemic_volume) + '/yr</span></div>' +
+      '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.ischemic_volume / maxIschemic * 100) + '%;background:var(--jnj-red);"></div></div>' +
+      '</div>';
+
+    html += '<div class="prev-bar-container">' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">LVO (21% of ischemic)</span><span class="prev-bar-val">' + fmt(h.lvo_volume) + '/yr</span></div>' +
+      '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.lvo_volume / maxLvo * 100) + '%;background:var(--jnj-blue);"></div></div>' +
+      '</div>';
+
+    html += '<div class="prev-bar-container">' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">Hemorrhagic (12/100k)</span><span class="prev-bar-val">' + fmt(h.hemorrhagic_volume) + '/yr</span></div>' +
+      '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.hemorrhagic_volume / maxHemorrhagic * 100) + '%;background:#7C3AED;"></div></div>' +
+      '</div>';
+
+    html += '<div class="prev-bar-container">' +
+      '<div class="prev-bar-label"><span class="prev-bar-name">AVM/Aneurysm (12/100k)</span><span class="prev-bar-val">' + fmt(h.avm_aneurysm_volume) + '/yr</span></div>' +
+      '<div class="prev-bar"><div class="prev-bar-fill" style="width:' + Math.round(h.avm_aneurysm_volume / maxAvm * 100) + '%;background:#059669;"></div></div>' +
+      '</div>';
+
+    // Hemorrhagic subtypes
+    if (h.hemorrhagic_volume > 0) {
+      html += '<div style="margin-top:8px;padding:8px;background:#f8fafc;border-radius:6px;">' +
+        '<div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Hemorrhagic Subtypes</div>' +
+        '<div class="detail-grid">' +
+        '<div class="detail-item"><div class="detail-label">SAH (5%)</div><div class="detail-value">' + fmt(h.sah_volume) + '</div></div>' +
+        '<div class="detail-item"><div class="detail-label">ICH (80%)</div><div class="detail-value">' + fmt(h.ich_volume) + '</div></div>' +
+        '</div></div>';
     }
-  };
-  const plan = plans[h.tps_segment];
+  } else {
+    html += '<div style="padding:12px;background:#f8fafc;border-radius:6px;font-size:12px;color:#94a3b8;text-align:center;">No catchment population data — epidemiology estimates unavailable</div>';
+  }
+  html += '</div>';
 
-  // Prevalence bars (scale to max in territory)
-  const maxLvo = Math.max(...HOSPITALS.map(x => x.lvo_rate || 0)) || 1;
-  const maxCsdh = Math.max(...HOSPITALS.map(x => x.csdh_mma_rate || 0)) || 1;
-  const maxHem = Math.max(...HOSPITALS.map(x => x.hemorrhagic_rate || 0)) || 1;
+  // ── A-Fib (conditional) ──
+  if (h.afib_prevalence > 0 || h.afib_count > 0) {
+    html += '<div class="drawer-section">' +
+      '<div class="drawer-section-title">Atrial Fibrillation</div>' +
+      '<div class="detail-grid">' +
+      '<div class="detail-item"><div class="detail-label">Prevalence</div><div class="detail-value">' + (h.afib_prevalence ? h.afib_prevalence + '%' : '—') + '</div></div>' +
+      '<div class="detail-item"><div class="detail-label">Absolute Count</div><div class="detail-value">' + (h.afib_count ? fmt(h.afib_count) : '—') + '</div></div>' +
+      '<div class="detail-item"><div class="detail-label">MMAE Score</div><div class="detail-value">' + (h.mmae_score || '—') + '</div></div>' +
+      '<div class="detail-item"><div class="detail-label">Benefit Radius</div><div class="detail-value">' + (h.clinical_benefit_radius ? h.clinical_benefit_radius + ' km' : '—') + '</div></div>' +
+      '</div></div>';
+  }
 
-  const cadenceMap = { HIGH: 'Weekly', MID: 'Twice/Month', LOW: 'Monthly' };
+  // ── Geographic Access & Travel ──
+  html += '<div class="drawer-section">' +
+    '<div class="drawer-section-title">Geographic Access & Travel</div>' +
+    '<div class="geo-access-badge ' + getGeoAccessClass(h.geographic_access) + '">' +
+    getGeoAccessIcon(h.geographic_access) + ' ' + h.geographic_access +
+    '</div>' +
+    '<div class="detail-grid">' +
+    '<div class="detail-item"><div class="detail-label">Closest Team Member</div><div class="detail-value" style="font-size:12px;">' + h.closest_team_member + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Distance</div><div class="detail-value">' + h.travel_miles + ' mi</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Drive Time</div><div class="detail-value">' + h.travel_time_min + ' min</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Recommended Cadence</div><div class="detail-value">' + cadenceMap[h.clinical_tier] + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Road Access</div><div class="detail-value">' + (h.road_access ? '✓ Yes' : '✗ Limited') + '</div></div>' +
+    '<div class="detail-item"><div class="detail-label">Medevac</div><div class="detail-value">' + (h.medevac_available ? '✓ Available' : '—') + '</div></div>' +
+    '</div></div>';
 
-  document.getElementById('drawerBody').innerHTML = `
-    <!-- Hospital Profile -->
-    <div class="drawer-section">
-      <div class="drawer-section-title">Hospital Profile</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">Full Name</div><div class="detail-value" style="font-size:12px;">${h.name}</div></div>
-        <div class="detail-item"><div class="detail-label">Certification</div><div class="detail-value"><span class="badge badge-cert" style="background:${certColor}">${h.cert || 'None'}</span>${h.cert_body ? ' <span style="font-size:10px;color:#94a3b8;">'+h.cert_body+'</span>' : ''}</div></div>
-        <div class="detail-item"><div class="detail-label">Licensed Beds</div><div class="detail-value">${fmt(h.beds)}</div></div>
-        <div class="detail-item"><div class="detail-label">Strokes/Year</div><div class="detail-value">${fmt(h.strokes_yr)}</div></div>
-        <div class="detail-item"><div class="detail-label">Affiliation</div><div class="detail-value" style="font-size:12px;">${h.affiliation}</div></div>
-        <div class="detail-item"><div class="detail-label">GPO</div><div class="detail-value" style="font-size:12px;">${h.gpo}</div></div>
-        <div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value" style="font-size:12px;">${h.phone}</div></div>
-        <div class="detail-item"><div class="detail-label">IR Phone</div><div class="detail-value" style="font-size:12px;">${h.ir_phone || '—'}</div></div>
-        <div class="detail-item"><div class="detail-label">Address</div><div class="detail-value" style="font-size:11px;">${h.address}</div></div>
-        <div class="detail-item"><div class="detail-label">County</div><div class="detail-value" style="font-size:12px;">${h.county}</div></div>
-      </div>
-    </div>
+  // ── Comment ──
+  if (h.comment) {
+    html += '<div style="margin-top:4px;padding:8px;background:#fffbeb;border-radius:6px;font-size:11px;color:#92400e;">💡 ' + h.comment + '</div>';
+  }
 
-    <!-- Programs -->
-    <div class="drawer-section">
-      <div class="drawer-section-title">Programs</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">Neurosurgery Fellowship</div><div class="detail-value">${h.nsg_fellowship ? '✓ Yes' : '✗ No'}</div></div>
-        <div class="detail-item"><div class="detail-label">Neuro IR Fellowship</div><div class="detail-value">${h.nir_fellowship ? '✓ Yes' : '✗ No'}</div></div>
-      </div>
-    </div>
-
-    <!-- TPS Score -->
-    <div class="drawer-section">
-      <div class="drawer-section-title">Territory Priority Score</div>
-      <div class="tps-gauge-container">
-        <div class="tps-gauge" style="background: conic-gradient(${tpsColor} ${h.tps_score * 3.6}deg, #e2e8f0 0);">
-          <div style="width:48px;height:48px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;">
-            <span class="tps-gauge-value" style="color:${tpsColor}">${h.tps_score}</span>
-          </div>
-        </div>
-        <div class="tps-gauge-info">
-          <div class="tps-segment-badge" style="background:${tpsColor}">${h.tps_segment}</div>
-          <div class="tps-strategy">${h.tps_strategy}</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Tier ${h.tier} · ${cadenceMap[h.tps_segment]} cadence</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Catchment Demographics -->
-    ${h.catchment > 0 ? `
-    <div class="drawer-section">
-      <div class="drawer-section-title">Catchment Demographics</div>
-      <div class="detail-grid" style="margin-bottom:12px;">
-        <div class="detail-item"><div class="detail-label">Population</div><div class="detail-value">${fmt(h.catchment)}</div></div>
-        <div class="detail-item"><div class="detail-label">Median Age</div><div class="detail-value">${h.median_age || '—'}</div></div>
-        <div class="detail-item"><div class="detail-label">Life Expectancy</div><div class="detail-value">${h.life_expectancy || '—'}</div></div>
-      </div>
-      <div class="drawer-section-title" style="font-size:10px;">Stroke Prevalence Estimates</div>
-      <div class="prev-bar-container">
-        <div class="prev-bar-label"><span class="prev-bar-name">LVO (24/100k)</span><span class="prev-bar-val">${fmt(h.lvo_rate)}/yr</span></div>
-        <div class="prev-bar"><div class="prev-bar-fill" style="width:${Math.round(h.lvo_rate / maxLvo * 100)}%;background:var(--jnj-red);"></div></div>
-      </div>
-      <div class="prev-bar-container">
-        <div class="prev-bar-label"><span class="prev-bar-name">cSDH/MMA (17.3/100k)</span><span class="prev-bar-val">${fmt(h.csdh_mma_rate)}/yr</span></div>
-        <div class="prev-bar"><div class="prev-bar-fill" style="width:${Math.round(h.csdh_mma_rate / maxCsdh * 100)}%;background:var(--jnj-blue);"></div></div>
-      </div>
-      <div class="prev-bar-container">
-        <div class="prev-bar-label"><span class="prev-bar-name">Hemorrhagic (12/100k)</span><span class="prev-bar-val">${fmt(h.hemorrhagic_rate)}/yr</span></div>
-        <div class="prev-bar"><div class="prev-bar-fill" style="width:${Math.round(h.hemorrhagic_rate / maxHem * 100)}%;background:#7C3AED;"></div></div>
-      </div>
-    </div>` : ''}
-
-    <!-- Sales Performance -->
-    <div class="drawer-section">
-      <div class="drawer-section-title">Sales Performance</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">NTS 2025</div><div class="detail-value">${fmtMoney(h.nts_2025)}</div></div>
-        <div class="detail-item"><div class="detail-label">NTS 2026 YTD</div><div class="detail-value">${fmtMoney(h.nts_2026_ytd)}</div></div>
-        <div class="detail-item"><div class="detail-label">2026 Annualized</div><div class="detail-value">${fmtMoney(h.nts_2026_annualized)}</div></div>
-        <div class="detail-item"><div class="detail-label">YoY Growth</div><div class="detail-value" style="color:${h.yoy_growth > 0 ? '#059669' : '#dc2626'}">${h.yoy_growth > 0 ? '↑' : '↓'} ${Math.abs(h.yoy_growth)}%</div></div>
-      </div>
-      ${h.comment ? `<div style="margin-top:8px;padding:8px;background:#fffbeb;border-radius:6px;font-size:11px;color:#92400e;">💡 ${h.comment}</div>` : ''}
-    </div>
-
-    <!-- Business Plan -->
-    <div class="drawer-section">
-      <div class="drawer-section-title">Business Plan</div>
-      <div class="biz-plan">
-        <div class="biz-plan-title" style="color:${tpsColor}">Strategy: ${plan.title}</div>
-        <ul class="biz-plan-items">
-          ${plan.items.map(item => `<li>${item}</li>`).join('')}
-        </ul>
-      </div>
-    </div>
-
-    <!-- Travel & Logistics -->
-    <div class="drawer-section">
-      <div class="drawer-section-title">Travel & Logistics</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">Closest Team Member</div><div class="detail-value" style="font-size:12px;">${h.closest_team_member}</div></div>
-        <div class="detail-item"><div class="detail-label">Distance</div><div class="detail-value">${h.travel_miles} mi</div></div>
-        <div class="detail-item"><div class="detail-label">Drive Time</div><div class="detail-value">${h.travel_time_min} min</div></div>
-        <div class="detail-item"><div class="detail-label">Recommended Cadence</div><div class="detail-value">${cadenceMap[h.tps_segment]}</div></div>
-      </div>
-    </div>
-  `;
-
+  document.getElementById('drawerBody').innerHTML = html;
   document.getElementById('accountDrawer').classList.add('open');
   renderCards();
-  showToast(`Viewing ${h.short_name}`);
+  showToast('Viewing ' + h.short_name);
 }
 
 function closeDrawer() {
@@ -825,42 +844,42 @@ function openCalendar() {
     'Buying/VAC': 'var(--dept-buying)'
   };
 
-  const cadenceWeeks = { HIGH: 1, MID: 2, LOW: 4 };
+  // Cadence based on clinical tier: T1=weekly, T2=biweekly, T3=monthly
+  const cadenceWeeks = { 1: 1, 2: 2, 3: 4 };
 
-  let html = `
-    <div class="cadence-legend">
-      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-physician)"></div>Physician Lab</div>
-      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-stroke)"></div>Stroke Coord</div>
-      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-education)"></div>Education Coord</div>
-      <div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-buying)"></div>Buying/VAC</div>
-    </div>`;
+  let calHtml = '<div class="cadence-legend">' +
+    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-physician)"></div>Physician Lab</div>' +
+    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-stroke)"></div>Stroke Coord</div>' +
+    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-education)"></div>Education Coord</div>' +
+    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-buying)"></div>Buying/VAC</div>' +
+    '</div>';
 
-  months.forEach(month => {
-    html += `<div class="cal-month"><div class="cal-month-title">${month.name}</div>`;
+  months.forEach(function(month) {
+    calHtml += '<div class="cal-month"><div class="cal-month-title">' + month.name + '</div>';
     for (let w = 0; w < month.weeks; w++) {
       const weekNum = month.startWeek + w;
-      html += `<div class="cal-week"><div class="cal-week-label">Wk ${weekNum}</div><div class="cal-week-entries">`;
+      calHtml += '<div class="cal-week"><div class="cal-week-label">Wk ' + weekNum + '</div><div class="cal-week-entries">';
 
-      HOSPITALS.forEach(h => {
-        const cadence = cadenceWeeks[h.tps_segment];
+      HOSPITALS.forEach(function(h) {
+        const cadence = cadenceWeeks[h.clinical_tier];
         if ((weekNum - 1) % cadence === 0) {
-          // Determine which departments to visit
           const depts = ['Physician Lab'];
           if (weekNum % 2 === 0) depts.push('Stroke Coord');
           if (weekNum % 3 === 0) depts.push('Education Coord');
           if (weekNum % 4 === 0) depts.push('Buying/VAC');
 
-          const dots = depts.map(d => `<div class="cal-dept-dot" style="background:${deptColors[d]}" title="${d}"></div>`).join('');
-          html += `<div class="cal-entry" onclick="openDrawer(${HOSPITALS.indexOf(h)})" style="cursor:pointer;" title="${h.short_name}: ${depts.join(', ')}">${dots}<span>${h.short_name.length > 14 ? h.short_name.substring(0,12)+'…' : h.short_name}</span></div>`;
+          const dots = depts.map(function(d) { return '<div class="cal-dept-dot" style="background:' + deptColors[d] + '" title="' + d + '"></div>'; }).join('');
+          const label = h.short_name.length > 14 ? h.short_name.substring(0, 12) + '…' : h.short_name;
+          calHtml += '<div class="cal-entry" onclick="openDrawer(' + HOSPITALS.indexOf(h) + ')" style="cursor:pointer;" title="' + h.short_name + ': ' + depts.join(', ') + '">' + dots + '<span>' + label + '</span></div>';
         }
       });
 
-      html += `</div></div>`;
+      calHtml += '</div></div>';
     }
-    html += `</div>`;
+    calHtml += '</div>';
   });
 
-  document.getElementById('calendarBody').innerHTML = html;
+  document.getElementById('calendarBody').innerHTML = calHtml;
   document.getElementById('calendarPanel').classList.add('open');
   showToast('Cadence calendar opened');
 }
@@ -880,23 +899,23 @@ function fitAll() {
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
 document.getElementById('calendarClose').addEventListener('click', closeCalendar);
 document.getElementById('btnFitAll').addEventListener('click', fitAll);
-document.getElementById('btnCalendar').addEventListener('click', () => {
+document.getElementById('btnCalendar').addEventListener('click', function() {
   if (document.getElementById('calendarPanel').classList.contains('open')) {
     closeCalendar();
   } else {
     openCalendar();
   }
 });
-document.getElementById('btnZoomIn').addEventListener('click', () => map.zoomIn());
-document.getElementById('btnZoomOut').addEventListener('click', () => map.zoomOut());
+document.getElementById('btnZoomIn').addEventListener('click', function() { map.zoomIn(); });
+document.getElementById('btnZoomOut').addEventListener('click', function() { map.zoomOut(); });
 
 // Search
 document.getElementById('searchInput').addEventListener('input', renderCards);
 
 // Filters
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+document.querySelectorAll('.filter-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
     activeFilter = btn.dataset.filter;
     renderCards();
@@ -904,7 +923,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 });
 
 // Sort
-document.getElementById('sortSelect').addEventListener('change', e => {
+document.getElementById('sortSelect').addEventListener('change', function(e) {
   activeSortKey = e.target.value;
   renderCards();
 });
@@ -914,7 +933,7 @@ createMarkers();
 renderCards();
 
 // Close drawer/calendar on Escape
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') { closeDrawer(); closeCalendar(); }
 });
 </script>

@@ -2,7 +2,11 @@
 """
 Territory Map Generator for J&J MedTech Neurovascular
 =====================================================
+Health Economics & Clinical Infrastructure Edition
+
 Generates a single-file HTML territory map from an Excel file of hospital data.
+Focused on stroke epidemiology, clinical infrastructure, and geographic access.
+No sales/revenue data — purely clinical and health economics.
 
 Usage:
     python generate_territory_map.py --excel hospitals.xlsx --config config.json --output territory-map.html
@@ -25,143 +29,112 @@ from jinja2 import Template
 REQUIRED_COLUMNS = [
     "Hospital Name", "Short Name", "Address", "City", "State", "County",
     "Latitude", "Longitude", "Phone", "Licensed Beds", "Affiliation",
-    "Buy Group/GPO", "Stroke Certification", "Strokes Per Year",
-    "NTS 2025 (Full Year)", "NTS 2026 (YTD)"
+    "Buy Group/GPO", "Stroke Certification", "Strokes Per Year"
 ]
 
 OPTIONAL_COLUMNS = [
     "IR Phone", "Cert Body", "Neurosurgery Fellowship", "Neuro IR Fellowship",
-    "Catchment Population", "Median Age", "Life Expectancy", "Comment"
+    "Catchment Population", "Population 65+", "Median Age", "Life Expectancy",
+    "CAH Status", "Telestroke Capable", "24/7 Thrombectomy",
+    "tPA Available", "Neuro ICU", "CT Scanner", "Spoke Hospital",
+    "A-Fib Prevalence", "A-Fib Absolute Count", "MMAE Score",
+    "Clinical Benefit Radius (km)",
+    "Medevac Available", "Road Access",
+    "Comment"
 ]
 
-CERT_SCORES = {"CSC": 20, "PSC": 12, "TSC": 8, "TCC": 8, "None": 3, "": 3}
-CERT_COLORS = {"CSC": "#EB1700", "PSC": "#F59E0B", "TSC": "#0077C8", "TCC": "#0077C8", "None": "#6B7280", "": "#6B7280"}
-CERT_LABELS = {"CSC": "Comprehensive Stroke Center", "PSC": "Primary Stroke Center",
-               "TSC": "Thrombectomy-Capable Stroke Center", "TCC": "Thrombectomy-Capable Center",
-               "None": "No Certification", "": "No Certification"}
+CERT_COLORS = {
+    "CSC": "#EB1700", "PSC": "#F59E0B", "TSC": "#0077C8",
+    "TCC": "#0077C8", "None": "#6B7280", "": "#6B7280"
+}
+CERT_LABELS = {
+    "CSC": "Comprehensive Stroke Center", "PSC": "Primary Stroke Center",
+    "TSC": "Thrombectomy-Capable Stroke Center", "TCC": "Thrombectomy-Capable Center",
+    "None": "No Certification", "": "No Certification"
+}
 
-SEGMENT_THRESHOLDS = {"HIGH": 70, "MID": 50}
-SEGMENT_LABELS = {"HIGH": "Invest & Grow", "MID": "Develop & Build", "LOW": "Monitor & Nurture"}
+# Epidemiology rates (Rai et al. Stroke 2020, GBD 2019, AHA 2024, Rauhala et al. JAMA Neuro 2020)
+EPIRATES = {
+    "ischemic_per_100k": 216,
+    "lvo_pct_of_ischemic": 0.21,
+    "mt_eligibility_pct": 0.70,
+    "avm_aneurysm_per_100k": 12,
+    "hemorrhagic_per_100k": 12,
+    "hemorrhagic_sah_pct": 0.05,
+    "hemorrhagic_ich_pct": 0.80,
+    "hemorrhagic_other_pct": 0.15,
+    "age_65_multiplier": 2.5,
+    "default_65_plus_pct": 0.17,
+    "avg_los_ischemic_days": 6.6,
+    "avg_charges_ischemic": 72787,
+}
+
+INFRA_WEIGHTS = {
+    "cert_csc": 25, "cert_psc": 20, "cert_tsc": 15, "cert_none": 5,
+    "thrombectomy_24_7": 15, "neuro_icu": 12, "cah": 10,
+    "ct_scanner": 8, "telestroke": 8, "tpa": 5,
+    "nsg_fellowship": 7, "nir_fellowship": 8, "stroke_volume_max": 10,
+}
+
 
 # ─── Data Loading ────────────────────────────────────────────────────────────
 
 def load_excel(filepath):
-    """Load hospital data from Excel file."""
     wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
     ws = wb.active
-
-    # Read headers from first row
-    headers = []
-    for cell in ws[1]:
-        headers.append(str(cell.value).strip() if cell.value else "")
-
-    # Validate required columns
+    headers = [str(c.value).strip() if c.value else "" for c in ws[1]]
     missing = [c for c in REQUIRED_COLUMNS if c not in headers]
     if missing:
         print(f"ERROR: Missing required columns: {', '.join(missing)}")
-        print(f"Found columns: {', '.join(headers)}")
         sys.exit(1)
-
-    # Read data rows
     hospitals = []
     for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row[0]:  # Skip empty rows
+        if not row[0]:
             continue
-        record = {}
-        for i, h in enumerate(headers):
-            if i < len(row):
-                record[h] = row[i]
-            else:
-                record[h] = None
+        record = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
         hospitals.append(record)
-
     wb.close()
     return hospitals
 
 
 def load_config(config_path=None, args=None):
-    """Load configuration from JSON file or command-line args."""
     config = {
-        "rep_name": "Territory Rep",
-        "rep_role": "CAS",
-        "rep_base_city": "",
-        "rep_base_lat": 0,
-        "rep_base_lng": 0,
-        "territory_name": "Territory",
-        "map_center_lat": 33.0,
-        "map_center_lng": -83.0,
-        "map_zoom": 7,
-        "team_members": []
+        "rep_name": "Territory Rep", "rep_role": "CAS", "rep_base_city": "",
+        "rep_base_lat": 0, "rep_base_lng": 0, "territory_name": "Territory",
+        "map_center_lat": 0, "map_center_lng": 0, "map_zoom": 7, "team_members": []
     }
-
     if config_path and os.path.exists(config_path):
         with open(config_path, "r") as f:
-            file_config = json.load(f)
-        config.update(file_config)
-
-    # CLI overrides
+            config.update(json.load(f))
     if args:
-        if args.rep:
-            config["rep_name"] = args.rep
-        if args.territory:
-            config["territory_name"] = args.territory
-
+        if args.rep: config["rep_name"] = args.rep
+        if args.territory: config["territory_name"] = args.territory
     return config
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def safe_float(val, default=0.0):
+    if val is None: return default
+    try: return float(val)
+    except (ValueError, TypeError): return default
+
+def safe_int(val, default=0):
+    if val is None: return default
+    try: return int(float(val))
+    except (ValueError, TypeError): return default
+
+def safe_bool(val, default=False):
+    if val is None: return default
+    if isinstance(val, bool): return val
+    if isinstance(val, str): return val.lower() in ("true", "yes", "1", "y")
+    return bool(val)
 
 
 # ─── Data Enrichment ─────────────────────────────────────────────────────────
 
-def safe_float(val, default=0.0):
-    """Safely convert to float."""
-    if val is None:
-        return default
-    try:
-        return float(val)
-    except (ValueError, TypeError):
-        return default
-
-
-def safe_int(val, default=0):
-    """Safely convert to int."""
-    if val is None:
-        return default
-    try:
-        return int(float(val))
-    except (ValueError, TypeError):
-        return default
-
-
-def safe_bool(val, default=False):
-    """Safely convert to bool."""
-    if val is None:
-        return default
-    if isinstance(val, bool):
-        return val
-    if isinstance(val, str):
-        return val.lower() in ("true", "yes", "1", "y")
-    return bool(val)
-
-
 def enrich_hospital(h):
-    """Add computed fields to a hospital record."""
-    # Normalize fields
-    h["lat"] = safe_float(h.get("Latitude"))
-    h["lng"] = safe_float(h.get("Longitude"))
-    h["beds"] = safe_int(h.get("Licensed Beds"))
-    h["strokes_yr"] = safe_int(h.get("Strokes Per Year"))
-    h["nts_2025"] = safe_int(h.get("NTS 2025 (Full Year)"))
-    h["nts_2026_ytd"] = safe_int(h.get("NTS 2026 (YTD)"))
-    h["catchment"] = safe_int(h.get("Catchment Population"))
-    h["median_age"] = safe_float(h.get("Median Age"))
-    h["life_expectancy"] = safe_float(h.get("Life Expectancy"))
-    h["nsg_fellowship"] = safe_bool(h.get("Neurosurgery Fellowship"))
-    h["nir_fellowship"] = safe_bool(h.get("Neuro IR Fellowship"))
-    h["cert"] = str(h.get("Stroke Certification", "None")).strip()
-    if h["cert"] not in CERT_SCORES:
-        h["cert"] = "None"
-    h["cert_body"] = str(h.get("Cert Body", "")) if h.get("Cert Body") else ""
-    h["comment"] = str(h.get("Comment", "")) if h.get("Comment") else ""
-    h["ir_phone"] = str(h.get("IR Phone", "")) if h.get("IR Phone") else ""
+    # Basic fields
     h["name"] = str(h.get("Hospital Name", ""))
     h["short_name"] = str(h.get("Short Name", ""))
     h["address"] = str(h.get("Address", ""))
@@ -169,318 +142,273 @@ def enrich_hospital(h):
     h["state"] = str(h.get("State", ""))
     h["county"] = str(h.get("County", ""))
     h["phone"] = str(h.get("Phone", ""))
+    h["ir_phone"] = str(h.get("IR Phone", "")) if h.get("IR Phone") else ""
+    h["lat"] = safe_float(h.get("Latitude"))
+    h["lng"] = safe_float(h.get("Longitude"))
+    h["beds"] = safe_int(h.get("Licensed Beds"))
     h["affiliation"] = str(h.get("Affiliation", ""))
     h["gpo"] = str(h.get("Buy Group/GPO", ""))
+    h["strokes_yr"] = safe_int(h.get("Strokes Per Year"))
+    h["comment"] = str(h.get("Comment", "")) if h.get("Comment") else ""
 
-    # Health economic enrichment
-    if h["catchment"] > 0:
-        h["lvo_rate"] = round(h["catchment"] * 24 / 100000)
-        h["csdh_mma_rate"] = round(h["catchment"] * 17.3 / 100000)
-        h["hemorrhagic_rate"] = round(h["catchment"] * 12 / 100000)
-    else:
-        h["lvo_rate"] = 0
-        h["csdh_mma_rate"] = 0
-        h["hemorrhagic_rate"] = 0
-
-    # Annualized 2026 (YTD as of ~mid-Feb, so ~1.5 months = 1.5/12 factor)
-    # Use a dynamic fraction based on current month
-    now = datetime.now()
-    month_fraction = (now.month - 1 + now.day / 30) / 12
-    if month_fraction > 0:
-        h["nts_2026_annualized"] = round(h["nts_2026_ytd"] / month_fraction)
-    else:
-        h["nts_2026_annualized"] = h["nts_2026_ytd"]
-
-    # YoY growth
-    if h["nts_2025"] > 0:
-        h["yoy_growth"] = round((h["nts_2026_annualized"] - h["nts_2025"]) / h["nts_2025"] * 100, 1)
-    else:
-        h["yoy_growth"] = 0
-
-    # Cert color and label
+    # Certification
+    h["cert"] = str(h.get("Stroke Certification", "None")).strip()
+    if h["cert"] not in CERT_COLORS: h["cert"] = "None"
+    h["cert_body"] = str(h.get("Cert Body", "")) if h.get("Cert Body") else ""
     h["cert_color"] = CERT_COLORS.get(h["cert"], "#6B7280")
     h["cert_label"] = CERT_LABELS.get(h["cert"], "No Certification")
+
+    # Fellowships
+    h["nsg_fellowship"] = safe_bool(h.get("Neurosurgery Fellowship"))
+    h["nir_fellowship"] = safe_bool(h.get("Neuro IR Fellowship"))
+
+    # Demographics
+    h["median_age"] = safe_float(h.get("Median Age"))
+    h["life_expectancy"] = safe_float(h.get("Life Expectancy"))
+    pop_total = safe_int(h.get("Catchment Population"))
+    pop_65 = safe_int(h.get("Population 65+"))
+    if pop_total > 0 and pop_65 == 0:
+        pop_65 = int(pop_total * EPIRATES["default_65_plus_pct"])
+    h["pop_total"] = pop_total
+    h["pop_65_plus"] = pop_65
+    h["pop_under_65"] = max(0, pop_total - pop_65)
+    h["pop_65_pct"] = round(pop_65 / pop_total * 100, 1) if pop_total > 0 else 0
+    h["effective_pop"] = round(h["pop_under_65"] + pop_65 * EPIRATES["age_65_multiplier"]) if pop_total > 0 else 0
+
+    # Stroke epidemiology
+    if h["effective_pop"] > 0:
+        ep = h["effective_pop"]
+        h["ischemic_volume"] = round(ep * EPIRATES["ischemic_per_100k"] / 100000)
+        h["lvo_volume"] = round(h["ischemic_volume"] * EPIRATES["lvo_pct_of_ischemic"])
+        h["mt_eligible"] = round(h["lvo_volume"] * EPIRATES["mt_eligibility_pct"])
+        h["avm_aneurysm_volume"] = round(ep * EPIRATES["avm_aneurysm_per_100k"] / 100000)
+        h["hemorrhagic_volume"] = round(ep * EPIRATES["hemorrhagic_per_100k"] / 100000)
+        h["sah_volume"] = round(h["hemorrhagic_volume"] * EPIRATES["hemorrhagic_sah_pct"])
+        h["ich_volume"] = round(h["hemorrhagic_volume"] * EPIRATES["hemorrhagic_ich_pct"])
+        h["hemorrhagic_other"] = round(h["hemorrhagic_volume"] * EPIRATES["hemorrhagic_other_pct"])
+        h["total_stroke_volume"] = h["ischemic_volume"] + h["hemorrhagic_volume"]
+    else:
+        for k in ["ischemic_volume", "lvo_volume", "mt_eligible", "avm_aneurysm_volume",
+                   "hemorrhagic_volume", "sah_volume", "ich_volume", "hemorrhagic_other", "total_stroke_volume"]:
+            h[k] = 0
+
+    # Infrastructure flags
+    h["cah"] = safe_bool(h.get("CAH Status"))
+    h["telestroke"] = safe_bool(h.get("Telestroke Capable"))
+    h["thrombectomy_24_7"] = safe_bool(h.get("24/7 Thrombectomy"))
+    h["tpa_available"] = safe_bool(h.get("tPA Available"))
+    h["neuro_icu"] = safe_bool(h.get("Neuro ICU"))
+    h["ct_scanner"] = safe_bool(h.get("CT Scanner"))
+    h["spoke_hospital"] = safe_bool(h.get("Spoke Hospital"))
+
+    # A-Fib (optional)
+    h["afib_prevalence"] = safe_float(h.get("A-Fib Prevalence"))
+    h["afib_count"] = safe_int(h.get("A-Fib Absolute Count"))
+    h["mmae_score"] = safe_float(h.get("MMAE Score"))
+    h["clinical_benefit_radius"] = safe_float(h.get("Clinical Benefit Radius (km)"))
+
+    # Geographic access
+    h["medevac_available"] = safe_bool(h.get("Medevac Available"))
+    h["road_access"] = safe_bool(h.get("Road Access"), default=True)
 
     return h
 
 
-def calculate_tps(hospitals):
-    """Calculate TPS scores for all hospitals."""
-    if not hospitals:
-        return hospitals
+# ─── Scoring & Tiers ────────────────────────────────────────────────────────
 
-    max_strokes = max(h["strokes_yr"] for h in hospitals) or 1
-    max_beds = max(h["beds"] for h in hospitals) or 1
-
-    # Revenue quartiles
-    nts_values = sorted([h["nts_2025"] for h in hospitals], reverse=True)
-    q1_threshold = nts_values[len(nts_values) // 4] if len(nts_values) >= 4 else nts_values[0]
-    q2_threshold = nts_values[len(nts_values) // 2] if len(nts_values) >= 2 else nts_values[0]
-    q3_threshold = nts_values[3 * len(nts_values) // 4] if len(nts_values) >= 4 else 0
-
+def calculate_infrastructure_scores(hospitals):
+    max_strokes = max((h["strokes_yr"] for h in hospitals), default=1) or 1
     for h in hospitals:
         score = 0
-
-        # Stroke volume (0-25)
-        score += (h["strokes_yr"] / max_strokes) * 25
-
-        # Bed count (0-15)
-        score += (h["beds"] / max_beds) * 15
-
-        # Stroke certification (0-20)
-        score += CERT_SCORES.get(h["cert"], 3)
-
-        # Fellowship programs (0-15)
-        if h["nsg_fellowship"]:
-            score += 7.5
-        if h["nir_fellowship"]:
-            score += 7.5
-
-        # Sales momentum (0-15)
-        if h["nts_2026_annualized"] > h["nts_2025"] * 1.05:
-            score += 15
-        elif h["nts_2026_annualized"] >= h["nts_2025"] * 0.95:
-            score += 8
-        else:
-            score += 3
-
-        # Revenue rank (0-10)
-        if h["nts_2025"] >= q1_threshold:
-            score += 10
-        elif h["nts_2025"] >= q2_threshold:
-            score += 7
-        elif h["nts_2025"] >= q3_threshold:
-            score += 4
-        else:
-            score += 2
-
-        h["tps_score"] = round(min(score, 100))
-
-        # Segment
-        if h["tps_score"] >= SEGMENT_THRESHOLDS["HIGH"]:
-            h["tps_segment"] = "HIGH"
-        elif h["tps_score"] >= SEGMENT_THRESHOLDS["MID"]:
-            h["tps_segment"] = "MID"
-        else:
-            h["tps_segment"] = "LOW"
-
-        h["tps_strategy"] = SEGMENT_LABELS[h["tps_segment"]]
-
+        cert_map = {"CSC": INFRA_WEIGHTS["cert_csc"], "PSC": INFRA_WEIGHTS["cert_psc"],
+                     "TSC": INFRA_WEIGHTS["cert_tsc"], "TCC": INFRA_WEIGHTS["cert_tsc"]}
+        score += cert_map.get(h["cert"], INFRA_WEIGHTS["cert_none"])
+        if h["thrombectomy_24_7"]: score += INFRA_WEIGHTS["thrombectomy_24_7"]
+        if h["neuro_icu"]: score += INFRA_WEIGHTS["neuro_icu"]
+        if h["cah"]: score += INFRA_WEIGHTS["cah"]
+        if h["ct_scanner"]: score += INFRA_WEIGHTS["ct_scanner"]
+        if h["telestroke"]: score += INFRA_WEIGHTS["telestroke"]
+        if h["tpa_available"]: score += INFRA_WEIGHTS["tpa"]
+        if h["nsg_fellowship"]: score += INFRA_WEIGHTS["nsg_fellowship"]
+        if h["nir_fellowship"]: score += INFRA_WEIGHTS["nir_fellowship"]
+        score += min(INFRA_WEIGHTS["stroke_volume_max"],
+                     round((h["strokes_yr"] / max_strokes) * INFRA_WEIGHTS["stroke_volume_max"]))
+        h["infrastructure_score"] = min(round(score), 100)
     return hospitals
 
 
-def assign_tiers(hospitals):
-    """Assign tiers based on NTS 2025 ranking."""
-    sorted_h = sorted(hospitals, key=lambda x: x["nts_2025"], reverse=True)
+def assign_clinical_tiers(hospitals):
+    sorted_h = sorted(hospitals, key=lambda x: (x["infrastructure_score"], x["strokes_yr"]), reverse=True)
     n = len(sorted_h)
-    t1 = max(1, n // 3)
-    t2 = max(2, 2 * n // 3)
-
+    t1, t2 = max(1, n // 3), max(2, 2 * n // 3)
+    labels = {1: "High Complexity Hub", 2: "Regional Center", 3: "Basic Capability"}
     for i, h in enumerate(sorted_h):
-        if i < t1:
-            h["tier"] = 1
-        elif i < t2:
-            h["tier"] = 2
-        else:
-            h["tier"] = 3
-
+        h["clinical_tier"] = 1 if i < t1 else (2 if i < t2 else 3)
+        h["clinical_tier_label"] = labels[h["clinical_tier"]]
     return hospitals
 
 
-def calculate_travel(hospitals, config):
-    """Calculate travel time from closest team member using Haversine."""
-    team_locations = [{"lat": config["rep_base_lat"], "lng": config["rep_base_lng"],
-                       "name": config["rep_name"], "role": config["rep_role"]}]
-    for tm in config.get("team_members", []):
-        team_locations.append({"lat": tm["lat"], "lng": tm["lng"],
-                               "name": tm["name"], "role": tm["role"]})
-
+def assign_geographic_access(hospitals):
     for h in hospitals:
-        min_dist = float("inf")
-        closest = team_locations[0]["name"]
-        for tl in team_locations:
-            d = haversine(h["lat"], h["lng"], tl["lat"], tl["lng"])
-            if d < min_dist:
-                min_dist = d
-                closest = tl["name"]
-
-        road_miles = min_dist * 1.3  # road factor
-        h["travel_miles"] = round(road_miles, 1)
-        h["travel_time_min"] = round(road_miles / 55 * 60)  # 55 mph
-        h["closest_team_member"] = closest
-
+        t = h.get("travel_time_min", 0)
+        if t < 30: h["geographic_access"] = "Local"
+        elif t < 120: h["geographic_access"] = "Short"
+        elif t < 240: h["geographic_access"] = "Long"
+        else: h["geographic_access"] = "Flight Required"
     return hospitals
 
+
+# ─── Travel ──────────────────────────────────────────────────────────────────
 
 def haversine(lat1, lon1, lat2, lon2):
-    """Calculate distance in miles between two coordinates."""
-    R = 3959  # Earth's radius in miles
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = (math.sin(dlat / 2) ** 2 +
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-         math.sin(dlon / 2) ** 2)
+    R = 3959
+    dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return R * 2 * math.asin(math.sqrt(a))
 
 
-# ─── Template Rendering ─────────────────────────────────────────────────────
-
-def render_template(hospitals, config, template_path):
-    """Render the HTML template with hospital data and config."""
-    with open(template_path, "r") as f:
-        template_str = f.read()
-
-    template = Template(template_str)
-
-    # Sort hospitals by NTS 2025 descending for default display
-    hospitals_sorted = sorted(hospitals, key=lambda x: x["nts_2025"], reverse=True)
-
-    # Compute territory-level stats
-    total_nts_2025 = sum(h["nts_2025"] for h in hospitals)
-    total_nts_2026_ytd = sum(h["nts_2026_ytd"] for h in hospitals)
-    total_nts_2026_ann = sum(h["nts_2026_annualized"] for h in hospitals)
-    territory_yoy = round((total_nts_2026_ann - total_nts_2025) / total_nts_2025 * 100, 1) if total_nts_2025 > 0 else 0
-
-    tier_counts = {1: 0, 2: 0, 3: 0}
-    tps_dist = {"HIGH": 0, "MID": 0, "LOW": 0}
-    cert_counts = {"CSC": 0, "PSC": 0, "TSC": 0, "TCC": 0, "None": 0}
+def calculate_travel(hospitals, config):
+    team = [{"lat": config["rep_base_lat"], "lng": config["rep_base_lng"], "name": config["rep_name"]}]
+    for tm in config.get("team_members", []):
+        team.append({"lat": tm["lat"], "lng": tm["lng"], "name": tm["name"]})
     for h in hospitals:
-        tier_counts[h["tier"]] = tier_counts.get(h["tier"], 0) + 1
-        tps_dist[h["tps_segment"]] = tps_dist.get(h["tps_segment"], 0) + 1
-        cert_key = h["cert"] if h["cert"] in cert_counts else "None"
-        cert_counts[cert_key] = cert_counts.get(cert_key, 0) + 1
+        min_dist, closest = float("inf"), team[0]["name"]
+        for tl in team:
+            d = haversine(h["lat"], h["lng"], tl["lat"], tl["lng"])
+            if d < min_dist: min_dist, closest = d, tl["name"]
+        h["travel_miles"] = round(min_dist * 1.3, 1)
+        h["travel_time_min"] = round(min_dist * 1.3 / 55 * 60)
+        h["closest_team_member"] = closest
+    return hospitals
 
-    avg_tps = round(sum(h["tps_score"] for h in hospitals) / len(hospitals)) if hospitals else 0
 
-    generated_date = datetime.now().strftime("%B %d, %Y")
-
-    html = template.render(
-        hospitals=hospitals_sorted,
-        hospitals_json=json.dumps([serialize_hospital(h) for h in hospitals_sorted]),
-        config=config,
-        total_nts_2025=total_nts_2025,
-        total_nts_2026_ytd=total_nts_2026_ytd,
-        total_nts_2026_ann=total_nts_2026_ann,
-        territory_yoy=territory_yoy,
-        tier_counts=tier_counts,
-        tps_dist=tps_dist,
-        cert_counts=cert_counts,
-        avg_tps=avg_tps,
-        hospital_count=len(hospitals),
-        generated_date=generated_date,
-    )
-    return html
-
+# ─── Serialization & Rendering ───────────────────────────────────────────────
 
 def serialize_hospital(h):
-    """Convert hospital to JSON-safe dict."""
     keys = [
         "name", "short_name", "address", "city", "state", "county",
         "lat", "lng", "phone", "ir_phone", "beds", "affiliation", "gpo",
         "cert", "cert_body", "cert_color", "cert_label",
         "nsg_fellowship", "nir_fellowship", "strokes_yr",
-        "catchment", "median_age", "life_expectancy",
-        "lvo_rate", "csdh_mma_rate", "hemorrhagic_rate",
-        "nts_2025", "nts_2026_ytd", "nts_2026_annualized", "yoy_growth",
-        "tps_score", "tps_segment", "tps_strategy",
-        "tier", "travel_miles", "travel_time_min", "closest_team_member",
-        "comment"
+        "pop_total", "pop_65_plus", "pop_under_65", "pop_65_pct", "effective_pop",
+        "median_age", "life_expectancy",
+        "ischemic_volume", "lvo_volume", "mt_eligible",
+        "avm_aneurysm_volume", "hemorrhagic_volume",
+        "sah_volume", "ich_volume", "hemorrhagic_other", "total_stroke_volume",
+        "afib_prevalence", "afib_count", "mmae_score", "clinical_benefit_radius",
+        "cah", "telestroke", "thrombectomy_24_7", "tpa_available",
+        "neuro_icu", "ct_scanner", "spoke_hospital",
+        "infrastructure_score", "clinical_tier", "clinical_tier_label",
+        "medevac_available", "road_access", "geographic_access",
+        "travel_miles", "travel_time_min", "closest_team_member", "comment"
     ]
     return {k: h.get(k) for k in keys}
+
+
+def render_template(hospitals, config, template_path):
+    with open(template_path, "r") as f:
+        template_str = f.read()
+    template = Template(template_str)
+    hospitals_sorted = sorted(hospitals, key=lambda x: (x["infrastructure_score"], x["strokes_yr"]), reverse=True)
+
+    cert_counts = {"CSC": 0, "PSC": 0, "TSC": 0, "TCC": 0, "None": 0}
+    tier_counts = {1: 0, 2: 0, 3: 0}
+    for h in hospitals:
+        ck = h["cert"] if h["cert"] in cert_counts else "None"
+        cert_counts[ck] += 1
+        tier_counts[h["clinical_tier"]] = tier_counts.get(h["clinical_tier"], 0) + 1
+
+    return template.render(
+        hospitals=hospitals_sorted,
+        hospitals_json=json.dumps([serialize_hospital(h) for h in hospitals_sorted]),
+        config=config,
+        hospital_count=len(hospitals),
+        total_beds=sum(h["beds"] for h in hospitals),
+        total_strokes_yr=sum(h["strokes_yr"] for h in hospitals),
+        total_stroke_volume=sum(h["total_stroke_volume"] for h in hospitals),
+        total_ischemic=sum(h["ischemic_volume"] for h in hospitals),
+        total_lvo=sum(h["lvo_volume"] for h in hospitals),
+        total_mt_eligible=sum(h["mt_eligible"] for h in hospitals),
+        cert_counts=cert_counts, tier_counts=tier_counts,
+        cah_count=sum(1 for h in hospitals if h["cah"]),
+        thrombectomy_count=sum(1 for h in hospitals if h["thrombectomy_24_7"]),
+        telestroke_count=sum(1 for h in hospitals if h["telestroke"]),
+        neuro_icu_count=sum(1 for h in hospitals if h["neuro_icu"]),
+        avg_infra=round(sum(h["infrastructure_score"] for h in hospitals) / len(hospitals)) if hospitals else 0,
+        generated_date=datetime.now().strftime("%B %d, %Y"),
+    )
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate J&J MedTech Neurovascular Territory Map from Excel data"
-    )
+    parser = argparse.ArgumentParser(description="Generate J&J MedTech Neurovascular Territory Map")
     parser.add_argument("excel", nargs="?", help="Path to hospital Excel file")
     parser.add_argument("--excel", dest="excel_flag", help="Path to hospital Excel file")
     parser.add_argument("--config", help="Path to config JSON file")
     parser.add_argument("--output", "-o", default="territory-map.html", help="Output HTML file path")
     parser.add_argument("--rep", help="Rep name (overrides config)")
     parser.add_argument("--territory", help="Territory name (overrides config)")
-    parser.add_argument("--template", default=None, help="Path to HTML template (default: territory_template.html in same dir)")
-
+    parser.add_argument("--template", default=None, help="Path to HTML template")
     args = parser.parse_args()
 
-    # Resolve Excel path
     excel_path = args.excel or args.excel_flag
     if not excel_path:
-        parser.error("Excel file is required. Use: generate_territory_map.py hospitals.xlsx")
-
+        parser.error("Excel file is required.")
     if not os.path.exists(excel_path):
-        print(f"ERROR: Excel file not found: {excel_path}")
-        sys.exit(1)
+        print(f"ERROR: Excel file not found: {excel_path}"); sys.exit(1)
 
-    # Resolve template path
     script_dir = Path(__file__).parent
     template_path = args.template or str(script_dir / "territory_template.html")
     if not os.path.exists(template_path):
-        print(f"ERROR: Template file not found: {template_path}")
-        sys.exit(1)
+        print(f"ERROR: Template not found: {template_path}"); sys.exit(1)
 
-    # Load data
     print(f"Loading hospitals from {excel_path}...")
     hospitals = load_excel(excel_path)
     print(f"  Loaded {len(hospitals)} hospitals")
 
-    # Load config
     config = load_config(args.config, args)
     print(f"  Territory: {config['territory_name']}")
     print(f"  Rep: {config['rep_name']} ({config['rep_role']})")
 
-    # Enrich data
     print("Enriching hospital data...")
     hospitals = [enrich_hospital(h) for h in hospitals]
-
-    # Calculate TPS scores
-    print("Calculating TPS scores...")
-    hospitals = calculate_tps(hospitals)
-
-    # Assign tiers
-    print("Assigning tiers...")
-    hospitals = assign_tiers(hospitals)
-
-    # Calculate travel times
+    print("Calculating infrastructure scores...")
+    hospitals = calculate_infrastructure_scores(hospitals)
+    print("Assigning clinical priority tiers...")
+    hospitals = assign_clinical_tiers(hospitals)
     print("Calculating travel times...")
     hospitals = calculate_travel(hospitals, config)
+    print("Assigning geographic access categories...")
+    hospitals = assign_geographic_access(hospitals)
 
-    # Auto-detect map center if not set
     if config["map_center_lat"] == 0 and config["map_center_lng"] == 0:
-        config["map_center_lat"] = sum(h["lat"] for h in hospitals) / len(hospitals)
-        config["map_center_lng"] = sum(h["lng"] for h in hospitals) / len(hospitals)
+        config["map_center_lat"] = round(sum(h["lat"] for h in hospitals) / len(hospitals), 4)
+        config["map_center_lng"] = round(sum(h["lng"] for h in hospitals) / len(hospitals), 4)
 
-    # Render template
-    print(f"Rendering template from {template_path}...")
+    print("Rendering template...")
     html = render_template(hospitals, config, template_path)
-
-    # Write output
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"\nOutput written to {args.output}")
-    print(f"  File size: {os.path.getsize(args.output) / 1024:.1f} KB")
-
-    # Summary
-    print("\n── Territory Summary ──────────────────────────")
-    print(f"  Hospitals:     {len(hospitals)}")
-    tier_1 = sum(1 for h in hospitals if h['tier'] == 1)
-    tier_2 = sum(1 for h in hospitals if h['tier'] == 2)
-    tier_3 = sum(1 for h in hospitals if h['tier'] == 3)
-    print(f"  Tier 1 / 2 / 3: {tier_1} / {tier_2} / {tier_3}")
-    high = sum(1 for h in hospitals if h['tps_segment'] == 'HIGH')
-    mid = sum(1 for h in hospitals if h['tps_segment'] == 'MID')
-    low = sum(1 for h in hospitals if h['tps_segment'] == 'LOW')
-    print(f"  TPS HIGH/MID/LOW: {high} / {mid} / {low}")
-    total = sum(h['nts_2025'] for h in hospitals)
-    print(f"  Total NTS 2025: ${total:,}")
-    total_26 = sum(h['nts_2026_annualized'] for h in hospitals)
-    print(f"  NTS 2026 (ann.): ${total_26:,}")
-    print(f"  Map center:    ({config['map_center_lat']:.4f}, {config['map_center_lng']:.4f})")
-    print(f"  Map zoom:      {config['map_zoom']}")
-    print("───────────────────────────────────────────────")
+    print(f"\nOutput: {args.output} ({os.path.getsize(args.output) / 1024:.1f} KB)")
+    t1 = sum(1 for h in hospitals if h['clinical_tier'] == 1)
+    t2 = sum(1 for h in hospitals if h['clinical_tier'] == 2)
+    t3 = sum(1 for h in hospitals if h['clinical_tier'] == 3)
+    print(f"\n── Territory Clinical Summary ──────────────────────")
+    print(f"  Hospitals:          {len(hospitals)}")
+    print(f"  Total Beds:         {sum(h['beds'] for h in hospitals):,}")
+    print(f"  Strokes/Yr (obs):   {sum(h['strokes_yr'] for h in hospitals):,}")
+    print(f"  Est. Ischemic:      {sum(h['ischemic_volume'] for h in hospitals):,}")
+    print(f"  Est. LVO Cases:     {sum(h['lvo_volume'] for h in hospitals):,}")
+    print(f"  Est. MT Eligible:   {sum(h['mt_eligible'] for h in hospitals):,}")
+    csc = sum(1 for h in hospitals if h['cert'] == 'CSC')
+    psc = sum(1 for h in hospitals if h['cert'] == 'PSC')
+    tsc = sum(1 for h in hospitals if h['cert'] in ['TSC', 'TCC'])
+    print(f"  CSC / PSC / TSC:    {csc} / {psc} / {tsc}")
+    print(f"  Clinical Tier 1/2/3: {t1} / {t2} / {t3}")
+    print(f"  Avg Infra Score:    {round(sum(h['infrastructure_score'] for h in hospitals) / len(hospitals))}")
+    print(f"────────────────────────────────────────────────────")
 
 
 if __name__ == "__main__":

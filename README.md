@@ -1,6 +1,8 @@
 # J&J MedTech Neurovascular — Territory Map Generator
 
-Generate single-file HTML territory maps from Excel hospital data. Each output is a self-contained, interactive map with Leaflet.js — ready for Netlify deployment with zero build step.
+## Health Economics & Clinical Infrastructure Edition
+
+Generate single-file HTML territory maps from Excel hospital data. Each output is a self-contained, interactive map with Leaflet.js — focused on stroke epidemiology, clinical infrastructure, and geographic access. Ready for Netlify deployment with zero build step.
 
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
 
@@ -8,13 +10,13 @@ Generate single-file HTML territory maps from Excel hospital data. Each output i
 
 Takes an `.xlsx` file with hospital data and a small JSON config, and outputs a complete territory map HTML file with:
 
-- **Interactive Leaflet map** — CartoDB light tiles, custom div markers sized by NTS and colored by stroke certification (CSC=red, PSC=amber, TSC/TCC=blue, None=gray)
-- **Left sidebar** — Hospital cards ranked by NTS, searchable, filterable by cert type, sortable by multiple fields
-- **Account detail drawer** — Full hospital profile, TPS score gauge, stroke prevalence bars, auto-generated business plan, travel logistics
-- **Cadence calendar** — Mar–Aug 2026, per-hospital configurable cadence with department-colored dots (Physician Lab, Stroke Coord, Education Coord, Buying/VAC)
-- **Bottom analytics bar** — Territory NTS totals, projected growth, TPS distribution, tier breakdown
-- **Health economic enrichment** — LVO, cSDH/MMA, and hemorrhagic stroke prevalence rates auto-calculated from catchment population
-- **TPS auto-scoring** — 0–100 Territory Priority Score from 6 weighted factors (stroke volume, beds, certification, fellowships, sales momentum, revenue rank)
+- **Interactive Leaflet map** — CartoDB light tiles, custom div markers sized by stroke volume and colored by stroke certification (CSC=red, PSC=amber, TSC/TCC=blue, None=gray)
+- **Left sidebar** — Hospital cards ranked by infrastructure score, searchable, filterable by cert type, sortable by multiple fields
+- **Account detail drawer** — Full hospital profile, infrastructure score gauge, infrastructure checklist (✓/✗), stroke epidemiology panel, A-Fib data, geographic access & travel
+- **Cadence calendar** — Mar–Aug 2026, per-hospital configurable cadence with department-colored dots
+- **Bottom analytics bar** — Territory beds, stroke volume, LVO, MT eligible, cert breakdown, capability counts, tier distribution
+- **Stroke epidemiology** — Ischemic, LVO, MT eligible, hemorrhagic subtypes, AVM/aneurysm volumes from effective population
+- **Infrastructure scoring** — 0–100 score from certification, capabilities, fellowships, and stroke volume
 
 ## Quick Start
 
@@ -51,21 +53,43 @@ Your `.xlsx` file needs one row per hospital with these columns:
 | Buy Group/GPO | Vizient |
 | Stroke Certification | CSC / PSC / TSC / TCC / None |
 | Strokes Per Year | 900 |
-| NTS 2025 (Full Year) | 26327 |
-| NTS 2026 (YTD) | 46025 |
 
-### Optional
+### Optional — Clinical Infrastructure
 
 | Column | Example |
 |--------|---------|
-| IR Phone | (904) 202-2100 |
-| Cert Body | Joint Commission / DNV |
-| Neurosurgery Fellowship | TRUE / FALSE |
-| Neuro IR Fellowship | TRUE / FALSE |
+| CAH Status | TRUE / FALSE |
+| Telestroke Capable | TRUE / FALSE |
+| 24/7 Thrombectomy | TRUE / FALSE |
+| tPA Available | TRUE / FALSE |
+| Neuro ICU | TRUE / FALSE |
+| CT Scanner | TRUE / FALSE |
+| Spoke Hospital | TRUE / FALSE |
+
+### Optional — Demographics & Epidemiology
+
+| Column | Example |
+|--------|---------|
 | Catchment Population | 1750000 |
+| Population 65+ | 310000 |
 | Median Age | 37.5 |
 | Life Expectancy | 77.4 |
-| Comment | 175% YoY growth |
+| Neurosurgery Fellowship | TRUE / FALSE |
+| Neuro IR Fellowship | TRUE / FALSE |
+| IR Phone | (904) 202-2100 |
+| Cert Body | Joint Commission / DNV |
+
+### Optional — A-Fib & Geographic Access
+
+| Column | Example |
+|--------|---------|
+| A-Fib Prevalence | 3.2 |
+| A-Fib Absolute Count | 56000 |
+| MMAE Score | 72 |
+| Clinical Benefit Radius (km) | 45 |
+| Medevac Available | TRUE / FALSE |
+| Road Access | TRUE / FALSE |
+| Comment | Flagship CSC |
 
 See `sample_hospitals.xlsx` for a working example with 10 FL/GA hospitals.
 
@@ -90,27 +114,45 @@ See `sample_hospitals.xlsx` for a working example with 10 FL/GA hospitals.
 
 ## Auto-Calculations
 
-### Health Economics (from catchment population)
-- **LVO Rate**: population × 24 / 100,000 *(Rai et al., Stroke 2020)*
-- **cSDH/MMA Rate**: population × 17.3 / 100,000 *(Rauhala et al., JAMA Neurology 2020)*
-- **Hemorrhagic Rate**: population × 12 / 100,000 *(GBD 2019 / AHA 2024)*
+### Stroke Epidemiology (from catchment population)
 
-### TPS Scoring (0–100)
+Effective population is calculated as: `pop_under_65 + (pop_65_plus × 2.5)`
+
+| Metric | Rate | Source |
+|--------|------|--------|
+| Ischemic stroke | 216/100k effective pop | Rai et al., Stroke 2020 |
+| LVO | 21% of ischemic | Literature consensus |
+| MT eligibility | 70% of LVO | DEFUSE/DAWN trials |
+| AVM/Aneurysm | 12/100k effective pop | GBD 2019 |
+| Hemorrhagic | 12/100k effective pop | AHA 2024 |
+| SAH | 5% of hemorrhagic | — |
+| ICH | 80% of hemorrhagic | — |
+
+### Infrastructure Score (0–100)
+
 | Factor | Max Points |
 |--------|-----------|
-| Stroke volume (vs territory max) | 25 |
-| Certification (CSC=20, PSC=12, TSC/TCC=8, None=3) | 20 |
-| Bed count (vs territory max) | 15 |
-| Fellowship programs (NSG=7.5, NIR=7.5) | 15 |
-| Sales momentum (growing=15, flat=8, declining=3) | 15 |
-| Revenue quartile rank (Q1=10, Q2=7, Q3=4, Q4=2) | 10 |
+| Certification (CSC=25, PSC=20, TSC/TCC=15, None=5) | 25 |
+| 24/7 Thrombectomy | 15 |
+| Neuro ICU | 12 |
+| Critical Access Hospital | 10 |
+| CT Scanner | 8 |
+| Telestroke | 8 |
+| Neuro IR Fellowship | 8 |
+| Neurosurgery Fellowship | 7 |
+| tPA Available | 5 |
+| Stroke volume bonus (vs territory max) | 10 |
 
-Segments: **HIGH** (70+) → Invest & Grow, **MID** (50–69) → Develop & Build, **LOW** (<50) → Monitor & Nurture
+### Clinical Priority Tiers
 
-### Tier Assignment
-Hospitals ranked by NTS 2025 descending. Top third = Tier 1, middle = Tier 2, bottom = Tier 3.
+Hospitals ranked by infrastructure score + stroke volume descending. Top third = Tier 1 (High Complexity Hub), middle = Tier 2 (Regional Center), bottom = Tier 3 (Basic Capability).
+
+### Geographic Access
+
+Computed from travel time: Local (<30 min), Short (30–120), Long (120–240), Flight Required (>240).
 
 ### Travel Time
+
 Haversine distance × 1.3 road factor ÷ 55 mph, calculated from the closest team member.
 
 ## Project Structure
