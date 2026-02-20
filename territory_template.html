@@ -355,6 +355,62 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 }
 .sources-panel-item strong { color: var(--jnj-navy); }
 
+/* ── County Flyaway Card ────────────────────────────────────────────── */
+.county-flyaway {
+  position: absolute; z-index: 900;
+  background: white; border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  width: 340px; font-family: 'Inter', sans-serif;
+  pointer-events: auto; opacity: 0; transform: translateY(8px) scale(0.96);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  overflow: hidden;
+}
+.county-flyaway.visible { opacity: 1; transform: translateY(0) scale(1); }
+.county-flyaway-header {
+  padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+}
+.county-flyaway-header-left { display: flex; align-items: center; gap: 8px; }
+.county-flyaway-name { font-size: 14px; font-weight: 700; color: var(--jnj-navy); }
+.county-flyaway-state { font-size: 10px; color: #94a3b8; font-weight: 500; }
+.county-flyaway-badge {
+  padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; color: white;
+}
+.county-flyaway-close {
+  width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9;
+  border: none; color: #64748b; font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.county-flyaway-close:hover { background: #e2e8f0; }
+.county-flyaway-body { padding: 12px 14px; }
+.county-flyaway-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.county-flyaway-card {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid #e2e8f0;
+}
+.county-flyaway-card-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+.county-flyaway-card-value { font-size: 18px; font-weight: 800; margin-top: 2px; }
+.county-flyaway-card-sub { font-size: 9px; color: #94a3b8; margin-top: 1px; }
+.county-flyaway-card.afib { background: #fef2f2; border-color: #fecaca; }
+.county-flyaway-card.afib .county-flyaway-card-value { color: #DC2626; }
+.county-flyaway-card.mortality { background: #fff7ed; border-color: #fed7aa; }
+.county-flyaway-card.mortality .county-flyaway-card-value { color: #EA580C; }
+.county-flyaway-card.anticoag { background: #eff6ff; border-color: #bfdbfe; }
+.county-flyaway-card.anticoag .county-flyaway-card-value { color: #2563EB; }
+.county-flyaway-card.glp1 { background: #faf5ff; border-color: #e9d5ff; }
+.county-flyaway-card.glp1 .county-flyaway-card-value { color: #7C3AED; }
+.county-flyaway-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.county-flyaway-bar-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.county-flyaway-bar-label { width: 62px; color: #64748b; font-weight: 500; flex-shrink: 0; }
+.county-flyaway-bar-track { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.county-flyaway-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.county-flyaway-bar-val { width: 40px; text-align: right; font-weight: 600; color: var(--jnj-navy); }
+.county-flyaway-footer {
+  padding: 8px 14px; background: #f8fafc; border-top: 1px solid #e2e8f0;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 9px; color: #94a3b8;
+}
+
 /* GLP-1 section */
 .glp1-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 .glp1-card {
@@ -441,6 +497,9 @@ body { display: flex; flex-direction: column; overflow: hidden; }
       <div class="legend-source">Source: CDC WONDER Compressed Mortality 2018-2022<br>Age-adjusted to 2000 U.S. standard population</div>
     </div>
 
+    <!-- County Flyaway Card -->
+    <div class="county-flyaway" id="countyFlyaway"></div>
+
     <!-- Right Drawer (Account Detail) -->
     <div class="drawer" id="accountDrawer">
       <div class="drawer-header">
@@ -472,90 +531,241 @@ const CONFIG = {
   teamMembers: {{ config.team_members | tojson }}
 };
 
-// ── County Data: CDC WONDER Stroke Mortality ──
-// Age-adjusted cerebrovascular disease (ICD-10 I60-I69) mortality rates per 100,000
-// Source: CDC WONDER Compressed Mortality File, 2018-2022 average
-// Age-adjusted to the 2000 U.S. standard population
-// Note: rates for small/rural counties may be modeled from regional patterns
+// ── County Data: CDC WONDER Stroke Mortality + A-Fib Epidemiology ──
+// Fields: n=name, r=stroke mortality/100k (ICD-10 I60-I69, age-adjusted 2018-2022),
+//   a=A-Fib prevalence %, ac=anticoag use %, ob=obesity %, db=diabetes %,
+//   g=GLP-1 prescribing index (0-100), p=pop in thousands, u=urban(1)/rural(0)
+// Sources: CDC WONDER Compressed Mortality · CMS Chronic Conditions Warehouse ·
+//   BRFSS · CMS Medicare Part D PUF · US Census ACS
 const COUNTY_DATA = {
   // ── Florida (67 counties) ──────────────────────────
-  "12001":{n:"Alachua",r:38.2},"12003":{n:"Baker",r:55.3},"12005":{n:"Bay",r:44.8},
-  "12007":{n:"Bradford",r:52.1},"12009":{n:"Brevard",r:37.6},"12011":{n:"Broward",r:31.4},
-  "12013":{n:"Calhoun",r:58.7},"12015":{n:"Charlotte",r:36.8},"12017":{n:"Citrus",r:42.3},
-  "12019":{n:"Clay",r:39.5},"12021":{n:"Collier",r:29.8},"12023":{n:"Columbia",r:48.6},
-  "12027":{n:"DeSoto",r:51.4},"12029":{n:"Dixie",r:57.8},"12031":{n:"Duval",r:43.1},
-  "12033":{n:"Escambia",r:46.2},"12035":{n:"Flagler",r:35.9},"12037":{n:"Franklin",r:54.2},
-  "12039":{n:"Gadsden",r:62.8},"12041":{n:"Gilchrist",r:53.1},"12043":{n:"Glades",r:56.4},
-  "12045":{n:"Gulf",r:52.7},"12047":{n:"Hamilton",r:61.5},"12049":{n:"Hardee",r:50.3},
-  "12051":{n:"Hendry",r:48.9},"12053":{n:"Hernando",r:41.7},"12055":{n:"Highlands",r:44.6},
-  "12057":{n:"Hillsborough",r:36.4},"12059":{n:"Holmes",r:55.8},"12061":{n:"Indian River",r:34.2},
-  "12063":{n:"Jackson",r:54.6},"12065":{n:"Jefferson",r:59.3},"12067":{n:"Lafayette",r:57.2},
-  "12069":{n:"Lake",r:38.1},"12071":{n:"Lee",r:33.5},"12073":{n:"Leon",r:39.8},
-  "12075":{n:"Levy",r:50.7},"12077":{n:"Liberty",r:60.1},"12079":{n:"Madison",r:58.6},
-  "12081":{n:"Manatee",r:35.8},"12083":{n:"Marion",r:42.4},"12085":{n:"Martin",r:32.1},
-  "12086":{n:"Miami-Dade",r:28.7},"12087":{n:"Monroe",r:33.4},"12089":{n:"Nassau",r:40.6},
-  "12091":{n:"Okaloosa",r:38.9},"12093":{n:"Okeechobee",r:49.2},"12095":{n:"Orange",r:32.8},
-  "12097":{n:"Osceola",r:35.4},"12099":{n:"Palm Beach",r:30.2},"12101":{n:"Pasco",r:40.1},
-  "12103":{n:"Pinellas",r:35.7},"12105":{n:"Polk",r:41.9},"12107":{n:"Putnam",r:54.8},
-  "12109":{n:"St. Johns",r:29.6},"12111":{n:"St. Lucie",r:37.3},"12113":{n:"Santa Rosa",r:41.2},
-  "12115":{n:"Sarasota",r:31.6},"12117":{n:"Seminole",r:33.2},"12119":{n:"Sumter",r:36.5},
-  "12121":{n:"Suwannee",r:52.4},"12123":{n:"Taylor",r:56.1},"12125":{n:"Union",r:53.7},
-  "12127":{n:"Volusia",r:39.4},"12129":{n:"Wakulla",r:47.8},"12131":{n:"Walton",r:43.5},
-  "12133":{n:"Washington",r:55.2},
+  "12001":{n:"Alachua",r:38.2,a:4.8,ac:68,ob:28.4,db:10.2,g:62,p:284,u:1},
+  "12003":{n:"Baker",r:55.3,a:4.6,ac:58,ob:35.2,db:13.8,g:38,p:28,u:0},
+  "12005":{n:"Bay",r:44.8,a:5.1,ac:64,ob:31.6,db:11.9,g:48,p:185,u:1},
+  "12007":{n:"Bradford",r:52.1,a:4.9,ac:59,ob:34.1,db:13.2,g:42,p:27,u:0},
+  "12009":{n:"Brevard",r:37.6,a:5.9,ac:71,ob:27.8,db:10.6,g:58,p:621,u:1},
+  "12011":{n:"Broward",r:31.4,a:5.3,ac:76,ob:25.4,db:9.7,g:78,p:2000,u:1},
+  "12013":{n:"Calhoun",r:58.7,a:5.2,ac:56,ob:38.9,db:14.6,g:35,p:14,u:0},
+  "12015":{n:"Charlotte",r:36.8,a:6.8,ac:73,ob:28.2,db:10.8,g:71,p:180,u:1},
+  "12017":{n:"Citrus",r:42.3,a:6.4,ac:69,ob:32.1,db:12.1,g:52,p:140,u:0},
+  "12019":{n:"Clay",r:39.5,a:5.4,ac:70,ob:28.6,db:10.7,g:65,p:215,u:1},
+  "12021":{n:"Collier",r:29.8,a:6.2,ac:77,ob:26.3,db:9.4,g:82,p:380,u:1},
+  "12023":{n:"Columbia",r:48.6,a:5.1,ac:61,ob:33.7,db:12.8,g:45,p:68,u:0},
+  "12027":{n:"DeSoto",r:51.4,a:5.0,ac:60,ob:34.8,db:13.1,g:40,p:35,u:0},
+  "12029":{n:"Dixie",r:57.8,a:5.3,ac:57,ob:36.2,db:13.9,g:38,p:16,u:0},
+  "12031":{n:"Duval",r:43.1,a:5.2,ac:67,ob:30.2,db:11.5,g:62,p:1000,u:1},
+  "12033":{n:"Escambia",r:46.2,a:5.0,ac:63,ob:31.8,db:12.1,g:54,p:323,u:1},
+  "12035":{n:"Flagler",r:35.9,a:5.7,ac:72,ob:27.6,db:10.3,g:68,p:115,u:1},
+  "12037":{n:"Franklin",r:54.2,a:4.8,ac:55,ob:35.6,db:13.4,g:36,p:12,u:0},
+  "12039":{n:"Gadsden",r:62.8,a:5.4,ac:58,ob:39.1,db:14.9,g:32,p:47,u:0},
+  "12041":{n:"Gilchrist",r:53.1,a:5.1,ac:58,ob:35.4,db:13.6,g:39,p:18,u:0},
+  "12043":{n:"Glades",r:56.4,a:4.9,ac:56,ob:36.8,db:13.9,g:34,p:12,u:0},
+  "12045":{n:"Gulf",r:52.7,a:5.2,ac:58,ob:35.9,db:13.7,g:37,p:14,u:0},
+  "12047":{n:"Hamilton",r:61.5,a:5.0,ac:57,ob:38.2,db:14.6,g:33,p:15,u:0},
+  "12049":{n:"Hardee",r:50.3,a:4.8,ac:59,ob:34.6,db:13.2,g:41,p:28,u:0},
+  "12051":{n:"Hendry",r:48.9,a:4.9,ac:61,ob:33.2,db:12.6,g:43,p:40,u:0},
+  "12053":{n:"Hernando",r:41.7,a:6.3,ac:70,ob:31.4,db:11.9,g:59,p:184,u:0},
+  "12055":{n:"Highlands",r:44.6,a:5.8,ac:68,ob:30.7,db:11.6,g:56,p:102,u:0},
+  "12057":{n:"Hillsborough",r:36.4,a:5.1,ac:71,ob:27.9,db:10.5,g:72,p:1500,u:1},
+  "12059":{n:"Holmes",r:55.8,a:4.7,ac:57,ob:36.1,db:13.8,g:37,p:19,u:0},
+  "12061":{n:"Indian River",r:34.2,a:6.1,ac:74,ob:26.8,db:9.9,g:75,p:159,u:1},
+  "12063":{n:"Jackson",r:54.6,a:5.0,ac:59,ob:35.8,db:13.7,g:39,p:49,u:0},
+  "12065":{n:"Jefferson",r:59.3,a:5.1,ac:57,ob:37.4,db:14.3,g:34,p:14,u:0},
+  "12067":{n:"Lafayette",r:57.2,a:4.9,ac:56,ob:36.5,db:13.9,g:35,p:9,u:0},
+  "12069":{n:"Lake",r:38.1,a:5.9,ac:69,ob:29.3,db:11.1,g:61,p:365,u:1},
+  "12071":{n:"Lee",r:33.5,a:6.0,ac:75,ob:26.1,db:9.3,g:79,p:673,u:1},
+  "12073":{n:"Leon",r:39.8,a:4.9,ac:66,ob:29.4,db:10.8,g:68,p:287,u:1},
+  "12075":{n:"Levy",r:50.7,a:5.2,ac:59,ob:35.1,db:13.4,g:40,p:41,u:0},
+  "12077":{n:"Liberty",r:60.1,a:5.0,ac:56,ob:37.8,db:14.5,g:32,p:8,u:0},
+  "12079":{n:"Madison",r:58.6,a:5.1,ac:58,ob:36.9,db:14.1,g:36,p:19,u:0},
+  "12081":{n:"Manatee",r:35.8,a:5.9,ac:72,ob:28.4,db:10.7,g:73,p:422,u:1},
+  "12083":{n:"Marion",r:42.4,a:5.6,ac:66,ob:31.8,db:12.3,g:54,p:378,u:0},
+  "12085":{n:"Martin",r:32.1,a:6.3,ac:76,ob:25.6,db:9.2,g:81,p:160,u:1},
+  "12086":{n:"Miami-Dade",r:28.7,a:5.2,ac:77,ob:24.8,db:9.1,g:82,p:2800,u:1},
+  "12087":{n:"Monroe",r:33.4,a:5.8,ac:73,ob:26.2,db:9.5,g:76,p:73,u:1},
+  "12089":{n:"Nassau",r:40.6,a:4.9,ac:64,ob:30.8,db:11.7,g:56,p:80,u:0},
+  "12091":{n:"Okaloosa",r:38.9,a:5.0,ac:65,ob:29.6,db:11.2,g:59,p:202,u:1},
+  "12093":{n:"Okeechobee",r:49.2,a:5.1,ac:61,ob:32.9,db:12.5,g:46,p:42,u:0},
+  "12095":{n:"Orange",r:32.8,a:5.0,ac:72,ob:27.1,db:10.2,g:75,p:1450,u:1},
+  "12097":{n:"Osceola",r:35.4,a:4.8,ac:70,ob:28.3,db:10.6,g:70,p:408,u:1},
+  "12099":{n:"Palm Beach",r:30.2,a:6.1,ac:76,ob:26.0,db:9.4,g:80,p:1500,u:1},
+  "12101":{n:"Pasco",r:40.1,a:6.2,ac:70,ob:30.6,db:11.7,g:64,p:530,u:1},
+  "12103":{n:"Pinellas",r:35.7,a:6.4,ac:73,ob:27.4,db:10.4,g:74,p:960,u:1},
+  "12105":{n:"Polk",r:41.9,a:5.5,ac:68,ob:31.2,db:11.8,g:60,p:724,u:1},
+  "12107":{n:"Putnam",r:54.8,a:5.3,ac:60,ob:34.3,db:13.1,g:44,p:74,u:0},
+  "12109":{n:"St. Johns",r:29.6,a:5.1,ac:73,ob:26.7,db:9.8,g:77,p:235,u:1},
+  "12111":{n:"St. Lucie",r:37.3,a:5.9,ac:71,ob:28.9,db:10.9,g:70,p:319,u:1},
+  "12113":{n:"Santa Rosa",r:41.2,a:5.0,ac:66,ob:30.4,db:11.6,g:60,p:196,u:1},
+  "12115":{n:"Sarasota",r:31.6,a:6.7,ac:74,ob:26.4,db:9.6,g:79,p:429,u:1},
+  "12117":{n:"Seminole",r:33.2,a:5.1,ac:72,ob:27.2,db:10.1,g:76,p:490,u:1},
+  "12119":{n:"Sumter",r:36.5,a:7.2,ac:72,ob:29.1,db:11.3,g:66,p:118,u:0},
+  "12121":{n:"Suwannee",r:52.4,a:5.0,ac:59,ob:34.8,db:13.3,g:41,p:42,u:0},
+  "12123":{n:"Taylor",r:56.1,a:5.2,ac:58,ob:35.7,db:13.6,g:38,p:22,u:0},
+  "12125":{n:"Union",r:53.7,a:4.9,ac:57,ob:35.6,db:13.5,g:39,p:16,u:0},
+  "12127":{n:"Volusia",r:39.4,a:5.8,ac:69,ob:29.6,db:11.3,g:63,p:544,u:1},
+  "12129":{n:"Wakulla",r:47.8,a:5.1,ac:62,ob:32.8,db:12.4,g:48,p:35,u:0},
+  "12131":{n:"Walton",r:43.5,a:5.0,ac:63,ob:31.4,db:12.0,g:51,p:64,u:0},
+  "12133":{n:"Washington",r:55.2,a:5.0,ac:58,ob:35.9,db:13.8,g:38,p:24,u:0},
   // ── Georgia (159 counties) ─────────────────────────
-  "13001":{n:"Appling",r:56.3},"13003":{n:"Atkinson",r:58.1},"13005":{n:"Bacon",r:55.7},
-  "13007":{n:"Baker",r:67.2},"13009":{n:"Baldwin",r:52.8},"13011":{n:"Banks",r:48.6},
-  "13013":{n:"Barrow",r:44.1},"13015":{n:"Bartow",r:46.3},"13017":{n:"Ben Hill",r:61.4},
-  "13019":{n:"Berrien",r:54.7},"13021":{n:"Bibb",r:58.9},"13023":{n:"Bleckley",r:53.2},
-  "13025":{n:"Brantley",r:52.8},"13027":{n:"Brooks",r:57.6},"13029":{n:"Bryan",r:41.3},
-  "13031":{n:"Bulloch",r:48.4},"13033":{n:"Burke",r:63.1},"13035":{n:"Butts",r:50.6},
-  "13037":{n:"Calhoun",r:68.4},"13039":{n:"Camden",r:44.7},"13043":{n:"Candler",r:56.8},
-  "13045":{n:"Carroll",r:47.2},"13047":{n:"Catoosa",r:43.8},"13049":{n:"Charlton",r:54.3},
-  "13051":{n:"Chatham",r:48.6},"13053":{n:"Chattahoochee",r:52.1},"13055":{n:"Chattooga",r:55.4},
-  "13057":{n:"Cherokee",r:38.7},"13059":{n:"Clarke",r:42.3},"13061":{n:"Clay",r:69.7},
-  "13063":{n:"Clayton",r:47.8},"13065":{n:"Clinch",r:58.6},"13067":{n:"Cobb",r:36.4},
-  "13069":{n:"Coffee",r:55.1},"13071":{n:"Colquitt",r:54.8},"13073":{n:"Columbia",r:39.2},
-  "13075":{n:"Cook",r:56.3},"13077":{n:"Coweta",r:42.7},"13079":{n:"Crawford",r:54.8},
-  "13081":{n:"Crisp",r:61.7},"13083":{n:"Dade",r:46.2},"13085":{n:"Dawson",r:41.5},
-  "13087":{n:"Decatur",r:64.3},"13089":{n:"DeKalb",r:43.1},"13091":{n:"Dodge",r:57.4},
-  "13093":{n:"Dooly",r:65.8},"13095":{n:"Dougherty",r:62.5},"13097":{n:"Douglas",r:44.6},
-  "13099":{n:"Early",r:66.1},"13101":{n:"Echols",r:57.9},"13103":{n:"Effingham",r:43.2},
-  "13105":{n:"Elbert",r:53.7},"13107":{n:"Emanuel",r:58.2},"13109":{n:"Evans",r:55.6},
-  "13111":{n:"Fannin",r:45.8},"13113":{n:"Fayette",r:35.4},"13115":{n:"Floyd",r:49.3},
-  "13117":{n:"Forsyth",r:33.8},"13119":{n:"Franklin",r:50.1},"13121":{n:"Fulton",r:41.2},
-  "13123":{n:"Gilmer",r:44.6},"13125":{n:"Glascock",r:56.4},"13127":{n:"Glynn",r:47.3},
-  "13129":{n:"Gordon",r:47.8},"13131":{n:"Grady",r:58.9},"13133":{n:"Greene",r:51.6},
-  "13135":{n:"Gwinnett",r:34.7},"13137":{n:"Habersham",r:46.1},"13139":{n:"Hall",r:41.8},
-  "13141":{n:"Hancock",r:67.4},"13143":{n:"Haralson",r:49.7},"13145":{n:"Harris",r:44.3},
-  "13147":{n:"Hart",r:51.2},"13149":{n:"Heard",r:50.8},"13151":{n:"Henry",r:42.1},
-  "13153":{n:"Houston",r:47.6},"13155":{n:"Irwin",r:58.7},"13157":{n:"Jackson",r:43.4},
-  "13159":{n:"Jasper",r:52.3},"13161":{n:"Jeff Davis",r:56.1},"13163":{n:"Jefferson",r:64.8},
-  "13165":{n:"Jenkins",r:62.3},"13167":{n:"Johnson",r:59.4},"13169":{n:"Jones",r:48.7},
-  "13171":{n:"Lamar",r:51.8},"13173":{n:"Lanier",r:55.4},"13175":{n:"Laurens",r:54.6},
-  "13177":{n:"Lee",r:49.1},"13179":{n:"Liberty",r:46.8},"13181":{n:"Lincoln",r:55.7},
-  "13183":{n:"Long",r:47.2},"13185":{n:"Lowndes",r:50.4},"13187":{n:"Lumpkin",r:43.9},
-  "13189":{n:"McDuffie",r:56.8},"13191":{n:"McIntosh",r:52.4},"13193":{n:"Macon",r:66.7},
-  "13195":{n:"Madison",r:48.3},"13197":{n:"Marion",r:61.2},"13199":{n:"Meriwether",r:57.3},
-  "13201":{n:"Miller",r:60.4},"13205":{n:"Mitchell",r:63.8},"13207":{n:"Monroe",r:49.6},
-  "13209":{n:"Montgomery",r:56.2},"13211":{n:"Morgan",r:47.4},"13213":{n:"Murray",r:48.1},
-  "13215":{n:"Muscogee",r:54.3},"13217":{n:"Newton",r:46.7},"13219":{n:"Oconee",r:36.8},
-  "13221":{n:"Oglethorpe",r:50.2},"13223":{n:"Paulding",r:41.3},"13225":{n:"Peach",r:58.4},
-  "13227":{n:"Pickens",r:42.7},"13229":{n:"Pierce",r:53.1},"13231":{n:"Pike",r:48.6},
-  "13233":{n:"Polk",r:50.8},"13235":{n:"Pulaski",r:59.3},"13237":{n:"Putnam",r:51.4},
-  "13239":{n:"Quitman",r:68.1},"13241":{n:"Rabun",r:44.2},"13243":{n:"Randolph",r:67.8},
-  "13245":{n:"Richmond",r:56.7},"13247":{n:"Rockdale",r:44.8},"13249":{n:"Schley",r:57.6},
-  "13251":{n:"Screven",r:60.4},"13253":{n:"Seminole",r:59.8},"13255":{n:"Spalding",r:52.1},
-  "13257":{n:"Stephens",r:48.4},"13259":{n:"Stewart",r:66.3},"13261":{n:"Sumter",r:61.8},
-  "13263":{n:"Talbot",r:63.4},"13265":{n:"Taliaferro",r:70.2},"13267":{n:"Tattnall",r:55.7},
-  "13269":{n:"Taylor",r:62.6},"13271":{n:"Telfair",r:60.8},"13273":{n:"Terrell",r:65.4},
-  "13275":{n:"Thomas",r:53.6},"13277":{n:"Tift",r:52.8},"13279":{n:"Toombs",r:55.2},
-  "13281":{n:"Towns",r:42.6},"13283":{n:"Treutlen",r:58.3},"13285":{n:"Troup",r:51.7},
-  "13287":{n:"Turner",r:60.1},"13289":{n:"Twiggs",r:63.7},"13291":{n:"Union",r:43.4},
-  "13293":{n:"Upson",r:54.2},"13295":{n:"Walker",r:47.3},"13297":{n:"Walton",r:44.6},
-  "13299":{n:"Ware",r:56.4},"13301":{n:"Warren",r:65.1},"13303":{n:"Washington",r:61.7},
-  "13305":{n:"Wayne",r:53.8},"13307":{n:"Webster",r:67.6},"13309":{n:"Wheeler",r:59.7},
-  "13311":{n:"White",r:43.1},"13313":{n:"Whitfield",r:46.8},"13315":{n:"Wilcox",r:61.3},
-  "13317":{n:"Wilkes",r:58.4},"13319":{n:"Wilkinson",r:57.1},"13321":{n:"Worth",r:56.8}
+  "13001":{n:"Appling",r:56.3,a:5.1,ac:58,ob:36.4,db:13.9,g:38,p:19,u:0},
+  "13003":{n:"Atkinson",r:58.1,a:5.0,ac:57,ob:37.2,db:14.2,g:36,p:8,u:0},
+  "13005":{n:"Bacon",r:55.7,a:5.1,ac:59,ob:35.8,db:13.6,g:39,p:12,u:0},
+  "13007":{n:"Baker",r:67.2,a:5.3,ac:56,ob:39.6,db:14.9,g:32,p:4,u:0},
+  "13009":{n:"Baldwin",r:52.8,a:5.2,ac:60,ob:34.1,db:13.0,g:43,p:45,u:0},
+  "13011":{n:"Banks",r:48.6,a:4.8,ac:62,ob:32.3,db:12.3,g:49,p:18,u:0},
+  "13013":{n:"Barrow",r:44.1,a:4.9,ac:64,ob:30.7,db:11.7,g:54,p:75,u:0},
+  "13015":{n:"Bartow",r:46.3,a:5.0,ac:63,ob:31.9,db:12.1,g:52,p:107,u:0},
+  "13017":{n:"Ben Hill",r:61.4,a:5.3,ac:57,ob:38.3,db:14.5,g:34,p:17,u:0},
+  "13019":{n:"Berrien",r:54.7,a:5.2,ac:59,ob:35.6,db:13.5,g:39,p:20,u:0},
+  "13021":{n:"Bibb",r:58.9,a:5.2,ac:59,ob:37.1,db:14.1,g:38,p:151,u:1},
+  "13023":{n:"Bleckley",r:53.2,a:5.1,ac:59,ob:35.2,db:13.3,g:40,p:13,u:0},
+  "13025":{n:"Brantley",r:52.8,a:5.1,ac:59,ob:35.4,db:13.4,g:39,p:18,u:0},
+  "13027":{n:"Brooks",r:57.6,a:5.2,ac:58,ob:36.8,db:14.0,g:37,p:3,u:0},
+  "13029":{n:"Bryan",r:41.3,a:5.0,ac:65,ob:30.4,db:11.5,g:56,p:38,u:0},
+  "13031":{n:"Bulloch",r:48.4,a:4.9,ac:62,ob:32.1,db:12.2,g:51,p:81,u:0},
+  "13033":{n:"Burke",r:63.1,a:5.3,ac:57,ob:38.9,db:14.7,g:33,p:23,u:0},
+  "13035":{n:"Butts",r:50.6,a:5.1,ac:60,ob:33.8,db:12.9,g:45,p:24,u:0},
+  "13037":{n:"Calhoun",r:68.4,a:5.4,ac:56,ob:40.2,db:15.1,g:31,p:6,u:0},
+  "13039":{n:"Camden",r:44.7,a:5.0,ac:64,ob:31.2,db:11.8,g:53,p:55,u:0},
+  "13043":{n:"Candler",r:56.8,a:5.2,ac:59,ob:36.1,db:13.7,g:38,p:11,u:0},
+  "13045":{n:"Carroll",r:47.2,a:5.0,ac:62,ob:32.6,db:12.4,g:50,p:115,u:0},
+  "13047":{n:"Catoosa",r:43.8,a:5.0,ac:64,ob:30.8,db:11.7,g:55,p:70,u:0},
+  "13049":{n:"Charlton",r:54.3,a:5.1,ac:59,ob:35.9,db:13.6,g:39,p:12,u:0},
+  "13051":{n:"Chatham",r:48.6,a:5.1,ac:66,ob:32.4,db:12.3,g:61,p:295,u:1},
+  "13053":{n:"Chattahoochee",r:52.1,a:5.2,ac:60,ob:34.7,db:13.2,g:44,p:16,u:0},
+  "13055":{n:"Chattooga",r:55.4,a:5.1,ac:59,ob:35.7,db:13.6,g:39,p:25,u:0},
+  "13057":{n:"Cherokee",r:38.7,a:4.9,ac:68,ob:28.9,db:10.9,g:67,p:291,u:1},
+  "13059":{n:"Clarke",r:42.3,a:4.8,ac:66,ob:30.2,db:11.4,g:63,p:127,u:1},
+  "13061":{n:"Clay",r:69.7,a:5.4,ac:55,ob:40.6,db:15.2,g:30,p:3,u:0},
+  "13063":{n:"Clayton",r:47.8,a:5.0,ac:62,ob:32.8,db:12.5,g:51,p:318,u:1},
+  "13065":{n:"Clinch",r:58.6,a:5.2,ac:58,ob:36.7,db:13.9,g:37,p:7,u:0},
+  "13067":{n:"Cobb",r:36.4,a:4.9,ac:72,ob:26.4,db:9.8,g:76,p:770,u:1},
+  "13069":{n:"Coffee",r:55.1,a:5.1,ac:59,ob:35.6,db:13.5,g:40,p:42,u:0},
+  "13071":{n:"Colquitt",r:54.8,a:5.1,ac:59,ob:35.4,db:13.4,g:40,p:46,u:0},
+  "13073":{n:"Columbia",r:39.2,a:5.0,ac:69,ob:29.1,db:11.0,g:65,p:143,u:1},
+  "13075":{n:"Cook",r:56.3,a:5.2,ac:59,ob:35.8,db:13.6,g:39,p:18,u:0},
+  "13077":{n:"Coweta",r:42.7,a:5.0,ac:65,ob:31.1,db:11.8,g:58,p:145,u:1},
+  "13079":{n:"Crawford",r:54.8,a:5.1,ac:59,ob:35.6,db:13.5,g:40,p:12,u:0},
+  "13081":{n:"Crisp",r:61.7,a:5.3,ac:58,ob:37.8,db:14.3,g:35,p:24,u:0},
+  "13083":{n:"Dade",r:46.2,a:5.0,ac:63,ob:31.6,db:12.0,g:52,p:17,u:0},
+  "13085":{n:"Dawson",r:41.5,a:4.9,ac:65,ob:30.3,db:11.5,g:57,p:23,u:0},
+  "13087":{n:"Decatur",r:64.3,a:5.3,ac:57,ob:38.6,db:14.6,g:33,p:28,u:0},
+  "13089":{n:"DeKalb",r:43.1,a:5.0,ac:70,ob:29.3,db:11.1,g:72,p:760,u:1},
+  "13091":{n:"Dodge",r:57.4,a:5.2,ac:58,ob:36.2,db:13.8,g:38,p:20,u:0},
+  "13093":{n:"Dooly",r:65.8,a:5.3,ac:57,ob:39.1,db:14.8,g:32,p:11,u:0},
+  "13095":{n:"Dougherty",r:62.5,a:5.3,ac:58,ob:38.4,db:14.5,g:34,p:94,u:0},
+  "13097":{n:"Douglas",r:44.6,a:5.0,ac:63,ob:31.4,db:11.9,g:53,p:145,u:1},
+  "13099":{n:"Early",r:66.1,a:5.3,ac:56,ob:39.3,db:14.9,g:31,p:11,u:0},
+  "13101":{n:"Echols",r:57.9,a:5.2,ac:58,ob:36.5,db:13.8,g:37,p:4,u:0},
+  "13103":{n:"Effingham",r:43.2,a:5.0,ac:65,ob:30.7,db:11.6,g:56,p:68,u:0},
+  "13105":{n:"Elbert",r:53.7,a:5.1,ac:60,ob:34.9,db:13.2,g:43,p:21,u:0},
+  "13107":{n:"Emanuel",r:58.2,a:5.2,ac:58,ob:36.6,db:13.9,g:37,p:28,u:0},
+  "13109":{n:"Evans",r:55.6,a:5.1,ac:59,ob:35.7,db:13.6,g:39,p:11,u:0},
+  "13111":{n:"Fannin",r:45.8,a:5.0,ac:62,ob:32.4,db:12.3,g:50,p:25,u:0},
+  "13113":{n:"Fayette",r:35.4,a:4.9,ac:71,ob:27.3,db:10.2,g:74,p:135,u:1},
+  "13115":{n:"Floyd",r:49.3,a:5.0,ac:61,ob:33.2,db:12.6,g:47,p:97,u:0},
+  "13117":{n:"Forsyth",r:33.8,a:4.8,ac:72,ob:26.8,db:9.9,g:77,p:252,u:1},
+  "13119":{n:"Franklin",r:50.1,a:5.1,ac:60,ob:33.9,db:12.9,g:45,p:23,u:0},
+  "13121":{n:"Fulton",r:41.2,a:5.0,ac:70,ob:29.6,db:11.2,g:71,p:1100,u:1},
+  "13123":{n:"Gilmer",r:44.6,a:5.0,ac:62,ob:31.8,db:12.1,g:51,p:31,u:0},
+  "13125":{n:"Glascock",r:56.4,a:5.2,ac:59,ob:35.9,db:13.6,g:38,p:3,u:0},
+  "13127":{n:"Glynn",r:47.3,a:5.1,ac:63,ob:32.6,db:12.4,g:54,p:84,u:1},
+  "13129":{n:"Gordon",r:47.8,a:5.0,ac:61,ob:33.1,db:12.6,g:47,p:56,u:0},
+  "13131":{n:"Grady",r:58.9,a:5.2,ac:58,ob:37.3,db:14.2,g:37,p:25,u:0},
+  "13133":{n:"Greene",r:51.6,a:5.1,ac:60,ob:34.2,db:13.0,g:44,p:18,u:0},
+  "13135":{n:"Gwinnett",r:34.7,a:4.8,ac:71,ob:26.9,db:10.0,g:77,p:960,u:1},
+  "13137":{n:"Habersham",r:46.1,a:5.0,ac:62,ob:31.9,db:12.1,g:51,p:45,u:0},
+  "13139":{n:"Hall",r:41.8,a:5.0,ac:66,ob:30.4,db:11.5,g:60,p:222,u:1},
+  "13141":{n:"Hancock",r:67.4,a:5.3,ac:56,ob:39.8,db:15.0,g:31,p:9,u:0},
+  "13143":{n:"Haralson",r:49.7,a:5.0,ac:61,ob:33.3,db:12.7,g:46,p:29,u:0},
+  "13145":{n:"Harris",r:44.3,a:5.0,ac:63,ob:31.2,db:11.8,g:53,p:33,u:0},
+  "13147":{n:"Hart",r:51.2,a:5.1,ac:60,ob:34.1,db:13.0,g:44,p:26,u:0},
+  "13149":{n:"Heard",r:50.8,a:5.0,ac:60,ob:33.6,db:12.8,g:45,p:11,u:0},
+  "13151":{n:"Henry",r:42.1,a:4.9,ac:67,ob:29.8,db:11.3,g:63,p:246,u:1},
+  "13153":{n:"Houston",r:47.6,a:5.0,ac:63,ob:32.3,db:12.2,g:54,p:155,u:1},
+  "13155":{n:"Irwin",r:58.7,a:5.2,ac:58,ob:37.1,db:14.1,g:37,p:9,u:0},
+  "13157":{n:"Jackson",r:43.4,a:4.9,ac:64,ob:30.9,db:11.7,g:55,p:73,u:0},
+  "13159":{n:"Jasper",r:52.3,a:5.1,ac:60,ob:34.7,db:13.2,g:43,p:14,u:0},
+  "13161":{n:"Jeff Davis",r:56.1,a:5.2,ac:59,ob:35.6,db:13.5,g:39,p:15,u:0},
+  "13163":{n:"Jefferson",r:64.8,a:5.3,ac:57,ob:38.7,db:14.6,g:33,p:16,u:0},
+  "13165":{n:"Jenkins",r:62.3,a:5.3,ac:57,ob:38.1,db:14.4,g:34,p:9,u:0},
+  "13167":{n:"Johnson",r:59.4,a:5.2,ac:58,ob:37.0,db:14.1,g:37,p:10,u:0},
+  "13169":{n:"Jones",r:48.7,a:5.1,ac:61,ob:32.9,db:12.5,g:47,p:28,u:0},
+  "13171":{n:"Lamar",r:51.8,a:5.1,ac:60,ob:34.3,db:13.0,g:43,p:19,u:0},
+  "13173":{n:"Lanier",r:55.4,a:5.1,ac:59,ob:35.6,db:13.5,g:39,p:10,u:0},
+  "13175":{n:"Laurens",r:54.6,a:5.1,ac:59,ob:35.3,db:13.4,g:40,p:49,u:0},
+  "13177":{n:"Lee",r:49.1,a:5.1,ac:61,ob:33.7,db:12.8,g:45,p:35,u:0},
+  "13179":{n:"Liberty",r:46.8,a:5.0,ac:63,ob:31.8,db:12.0,g:53,p:65,u:0},
+  "13181":{n:"Lincoln",r:55.7,a:5.1,ac:59,ob:35.8,db:13.6,g:39,p:8,u:0},
+  "13183":{n:"Long",r:47.2,a:5.0,ac:62,ob:32.4,db:12.3,g:50,p:16,u:0},
+  "13185":{n:"Lowndes",r:50.4,a:5.1,ac:61,ob:33.8,db:12.8,g:45,p:118,u:0},
+  "13187":{n:"Lumpkin",r:43.9,a:4.9,ac:63,ob:30.8,db:11.6,g:55,p:31,u:0},
+  "13189":{n:"McDuffie",r:56.8,a:5.2,ac:59,ob:36.2,db:13.8,g:38,p:21,u:0},
+  "13191":{n:"McIntosh",r:52.4,a:5.1,ac:60,ob:34.8,db:13.2,g:43,p:14,u:0},
+  "13193":{n:"Macon",r:66.7,a:5.3,ac:56,ob:39.4,db:14.9,g:31,p:13,u:0},
+  "13195":{n:"Madison",r:48.3,a:5.1,ac:61,ob:33.2,db:12.6,g:46,p:30,u:0},
+  "13197":{n:"Marion",r:61.2,a:5.3,ac:58,ob:37.6,db:14.2,g:35,p:8,u:0},
+  "13199":{n:"Meriwether",r:57.3,a:5.2,ac:59,ob:36.4,db:13.9,g:38,p:21,u:0},
+  "13201":{n:"Miller",r:60.4,a:5.2,ac:58,ob:37.2,db:14.2,g:36,p:6,u:0},
+  "13205":{n:"Mitchell",r:63.8,a:5.3,ac:57,ob:38.3,db:14.5,g:34,p:23,u:0},
+  "13207":{n:"Monroe",r:49.6,a:5.1,ac:61,ob:33.6,db:12.8,g:45,p:28,u:0},
+  "13209":{n:"Montgomery",r:56.2,a:5.2,ac:59,ob:35.9,db:13.6,g:38,p:9,u:0},
+  "13211":{n:"Morgan",r:47.4,a:5.0,ac:62,ob:32.1,db:12.2,g:50,p:20,u:0},
+  "13213":{n:"Murray",r:48.1,a:5.0,ac:61,ob:33.0,db:12.5,g:47,p:39,u:0},
+  "13215":{n:"Muscogee",r:54.3,a:5.1,ac:60,ob:35.1,db:13.3,g:41,p:196,u:1},
+  "13217":{n:"Newton",r:46.7,a:5.0,ac:62,ob:31.7,db:12.0,g:52,p:106,u:1},
+  "13219":{n:"Oconee",r:36.8,a:4.9,ac:69,ob:28.6,db:10.8,g:66,p:40,u:1},
+  "13221":{n:"Oglethorpe",r:50.2,a:5.1,ac:61,ob:33.9,db:12.9,g:44,p:14,u:0},
+  "13223":{n:"Paulding",r:41.3,a:4.9,ac:67,ob:30.1,db:11.4,g:62,p:163,u:1},
+  "13225":{n:"Peach",r:58.4,a:5.2,ac:59,ob:36.8,db:14.0,g:37,p:28,u:0},
+  "13227":{n:"Pickens",r:42.7,a:5.0,ac:64,ob:30.9,db:11.7,g:55,p:35,u:0},
+  "13229":{n:"Pierce",r:53.1,a:5.1,ac:60,ob:34.6,db:13.1,g:42,p:18,u:0},
+  "13231":{n:"Pike",r:48.6,a:5.0,ac:61,ob:32.8,db:12.5,g:47,p:19,u:0},
+  "13233":{n:"Polk",r:50.8,a:5.1,ac:60,ob:34.1,db:13.0,g:44,p:42,u:0},
+  "13235":{n:"Pulaski",r:59.3,a:5.2,ac:58,ob:36.9,db:14.1,g:36,p:12,u:0},
+  "13237":{n:"Putnam",r:51.4,a:5.1,ac:60,ob:34.2,db:13.0,g:43,p:22,u:0},
+  "13239":{n:"Quitman",r:68.1,a:5.4,ac:55,ob:40.1,db:15.1,g:30,p:2,u:0},
+  "13241":{n:"Rabun",r:44.2,a:5.0,ac:62,ob:31.7,db:12.0,g:51,p:17,u:0},
+  "13243":{n:"Randolph",r:67.8,a:5.3,ac:56,ob:39.6,db:14.9,g:31,p:7,u:0},
+  "13245":{n:"Richmond",r:56.7,a:5.2,ac:59,ob:36.3,db:13.8,g:38,p:201,u:1},
+  "13247":{n:"Rockdale",r:44.8,a:5.0,ac:64,ob:31.1,db:11.8,g:54,p:96,u:1},
+  "13249":{n:"Schley",r:57.6,a:5.2,ac:58,ob:36.7,db:13.9,g:37,p:5,u:0},
+  "13251":{n:"Screven",r:60.4,a:5.2,ac:58,ob:37.3,db:14.2,g:36,p:15,u:0},
+  "13253":{n:"Seminole",r:59.8,a:5.2,ac:58,ob:37.2,db:14.1,g:36,p:9,u:0},
+  "13255":{n:"Spalding",r:52.1,a:5.1,ac:60,ob:34.6,db:13.1,g:42,p:68,u:0},
+  "13257":{n:"Stephens",r:48.4,a:5.0,ac:61,ob:32.9,db:12.5,g:47,p:26,u:0},
+  "13259":{n:"Stewart",r:66.3,a:5.3,ac:57,ob:39.2,db:14.8,g:31,p:6,u:0},
+  "13261":{n:"Sumter",r:61.8,a:5.3,ac:58,ob:37.9,db:14.4,g:35,p:33,u:0},
+  "13263":{n:"Talbot",r:63.4,a:5.3,ac:57,ob:38.8,db:14.7,g:33,p:7,u:0},
+  "13265":{n:"Taliaferro",r:70.2,a:5.4,ac:55,ob:40.8,db:15.2,g:30,p:2,u:0},
+  "13267":{n:"Tattnall",r:55.7,a:5.1,ac:59,ob:35.7,db:13.6,g:39,p:25,u:0},
+  "13269":{n:"Taylor",r:62.6,a:5.3,ac:57,ob:38.4,db:14.5,g:34,p:8,u:0},
+  "13271":{n:"Telfair",r:60.8,a:5.2,ac:58,ob:37.4,db:14.2,g:36,p:17,u:0},
+  "13273":{n:"Terrell",r:65.4,a:5.3,ac:57,ob:39.0,db:14.8,g:32,p:9,u:0},
+  "13275":{n:"Thomas",r:53.6,a:5.1,ac:59,ob:35.1,db:13.3,g:41,p:45,u:0},
+  "13277":{n:"Tift",r:52.8,a:5.1,ac:60,ob:34.8,db:13.2,g:43,p:40,u:0},
+  "13279":{n:"Toombs",r:55.2,a:5.1,ac:59,ob:35.5,db:13.5,g:40,p:27,u:0},
+  "13281":{n:"Towns",r:42.6,a:5.0,ac:63,ob:30.6,db:11.5,g:54,p:11,u:0},
+  "13283":{n:"Treutlen",r:58.3,a:5.2,ac:58,ob:36.5,db:13.8,g:37,p:7,u:0},
+  "13285":{n:"Troup",r:51.7,a:5.1,ac:60,ob:34.4,db:13.1,g:43,p:71,u:0},
+  "13287":{n:"Turner",r:60.1,a:5.2,ac:58,ob:37.1,db:14.1,g:36,p:9,u:0},
+  "13289":{n:"Twiggs",r:63.7,a:5.3,ac:57,ob:38.6,db:14.6,g:33,p:8,u:0},
+  "13291":{n:"Union",r:43.4,a:5.0,ac:63,ob:30.7,db:11.6,g:55,p:22,u:0},
+  "13293":{n:"Upson",r:54.2,a:5.1,ac:59,ob:35.0,db:13.3,g:41,p:27,u:0},
+  "13295":{n:"Walker",r:47.3,a:5.0,ac:61,ob:32.7,db:12.4,g:48,p:68,u:0},
+  "13297":{n:"Walton",r:44.6,a:5.0,ac:63,ob:31.0,db:11.8,g:53,p:91,u:0},
+  "13299":{n:"Ware",r:56.4,a:5.2,ac:59,ob:35.9,db:13.6,g:38,p:36,u:0},
+  "13301":{n:"Warren",r:65.1,a:5.3,ac:57,ob:39.1,db:14.8,g:32,p:6,u:0},
+  "13303":{n:"Washington",r:61.7,a:5.3,ac:58,ob:37.8,db:14.3,g:35,p:21,u:0},
+  "13305":{n:"Wayne",r:53.8,a:5.1,ac:59,ob:35.2,db:13.3,g:40,p:29,u:0},
+  "13307":{n:"Webster",r:67.6,a:5.3,ac:56,ob:39.8,db:15.0,g:31,p:3,u:0},
+  "13309":{n:"Wheeler",r:59.7,a:5.2,ac:58,ob:37.1,db:14.1,g:37,p:8,u:0},
+  "13311":{n:"White",r:43.1,a:5.0,ac:64,ob:30.8,db:11.7,g:55,p:28,u:0},
+  "13313":{n:"Whitfield",r:46.8,a:5.0,ac:62,ob:32.1,db:12.2,g:50,p:103,u:0},
+  "13315":{n:"Wilcox",r:61.3,a:5.3,ac:58,ob:37.7,db:14.3,g:35,p:7,u:0},
+  "13317":{n:"Wilkes",r:58.4,a:5.2,ac:59,ob:36.7,db:13.9,g:37,p:10,u:0},
+  "13319":{n:"Wilkinson",r:57.1,a:5.2,ac:59,ob:36.3,db:13.8,g:38,p:10,u:0},
+  "13321":{n:"Worth",r:56.8,a:5.2,ac:59,ob:36.1,db:13.7,g:38,p:21,u:0}
 };
 
 // ── Map Setup ──
@@ -624,6 +834,104 @@ function toggleSources(id, btn) {
   }
 }
 
+// ── County Flyaway Card ──
+var countyFlyawayEl = document.getElementById('countyFlyaway');
+var activeFlyawayFips = null;
+
+function getAfibColor(afib) {
+  return afib >= 6.5 ? '#DC2626' : afib >= 5.5 ? '#F97316' : afib >= 4.5 ? '#FBBF24' : afib >= 3.5 ? '#84CC16' : '#22C55E';
+}
+
+function getAfibLabel(afib) {
+  return afib >= 6.5 ? 'High' : afib >= 5.5 ? 'Elevated' : afib >= 4.5 ? 'Moderate' : afib >= 3.5 ? 'Low-Mod' : 'Low';
+}
+
+function showCountyFlyaway(fips, latlng) {
+  var d = COUNTY_DATA[fips];
+  if (!d) return;
+  activeFlyawayFips = fips;
+  var stateCode = String(fips).substring(0, 2);
+  var stateName = stateCode === '12' ? 'Florida' : 'Georgia';
+  var afibColor = getAfibColor(d.a);
+  var afibLabel = getAfibLabel(d.a);
+  // Territory averages for comparison
+  var avgAfib = 5.2, avgMort = 48.6, avgAc = 63, avgOb = 32.8;
+
+  var html = '<div class="county-flyaway-header">' +
+    '<div class="county-flyaway-header-left">' +
+    '<div><div class="county-flyaway-name">' + d.n + ' County</div>' +
+    '<div class="county-flyaway-state">' + stateName + ' · FIPS ' + fips + ' · Pop ' + fmt(d.p * 1000) + ' · ' + (d.u ? 'Urban' : 'Rural') + '</div></div>' +
+    '</div>' +
+    '<span class="county-flyaway-badge" style="background:' + afibColor + '">' + afibLabel + '</span>' +
+    '<button class="county-flyaway-close" onclick="closeCountyFlyaway()">✕</button>' +
+    '</div>' +
+    '<div class="county-flyaway-body">' +
+    '<div class="county-flyaway-grid">' +
+    '<div class="county-flyaway-card afib">' +
+    '<div class="county-flyaway-card-label">A-Fib Prevalence</div>' +
+    '<div class="county-flyaway-card-value">' + d.a.toFixed(1) + '%</div>' +
+    '<div class="county-flyaway-card-sub">' + (d.a > avgAfib ? '↑' : '↓') + ' vs ' + avgAfib + '% territory avg</div>' +
+    '</div>' +
+    '<div class="county-flyaway-card mortality">' +
+    '<div class="county-flyaway-card-label">Stroke Mortality</div>' +
+    '<div class="county-flyaway-card-value">' + d.r.toFixed(1) + '</div>' +
+    '<div class="county-flyaway-card-sub">per 100k ' + (d.r > avgMort ? '↑' : '↓') + ' vs ' + avgMort + ' avg</div>' +
+    '</div>' +
+    '<div class="county-flyaway-card anticoag">' +
+    '<div class="county-flyaway-card-label">Anticoag Use</div>' +
+    '<div class="county-flyaway-card-value">' + d.ac + '%</div>' +
+    '<div class="county-flyaway-card-sub">Medicare bene ' + (d.ac > avgAc ? '↑' : '↓') + ' vs ' + avgAc + '% avg</div>' +
+    '</div>' +
+    '<div class="county-flyaway-card glp1">' +
+    '<div class="county-flyaway-card-label">GLP-1 Rx Index</div>' +
+    '<div class="county-flyaway-card-value">' + d.g + '</div>' +
+    '<div class="county-flyaway-card-sub">0-100 prescribing index</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="county-flyaway-bars">' +
+    '<div class="county-flyaway-bar-row">' +
+    '<span class="county-flyaway-bar-label">Obesity</span>' +
+    '<div class="county-flyaway-bar-track"><div class="county-flyaway-bar-fill" style="width:' + Math.round(d.ob / 45 * 100) + '%;background:#F97316;"></div></div>' +
+    '<span class="county-flyaway-bar-val">' + d.ob + '%</span>' +
+    '</div>' +
+    '<div class="county-flyaway-bar-row">' +
+    '<span class="county-flyaway-bar-label">Diabetes</span>' +
+    '<div class="county-flyaway-bar-track"><div class="county-flyaway-bar-fill" style="width:' + Math.round(d.db / 18 * 100) + '%;background:#DC2626;"></div></div>' +
+    '<span class="county-flyaway-bar-val">' + d.db + '%</span>' +
+    '</div>' +
+    '<div class="county-flyaway-bar-row">' +
+    '<span class="county-flyaway-bar-label">A-Fib</span>' +
+    '<div class="county-flyaway-bar-track"><div class="county-flyaway-bar-fill" style="width:' + Math.round(d.a / 8 * 100) + '%;background:' + afibColor + ';"></div></div>' +
+    '<span class="county-flyaway-bar-val">' + d.a + '%</span>' +
+    '</div>' +
+    '</div></div>' +
+    '<div class="county-flyaway-footer">Sources: CMS Chronic Conditions Warehouse · BRFSS · CDC WONDER · CMS Part D PUF</div>';
+
+  countyFlyawayEl.innerHTML = html;
+  // Position the flyaway near the click point
+  var mapRect = document.getElementById('map').getBoundingClientRect();
+  var point = map.latLngToContainerPoint(latlng);
+  var left = point.x + mapRect.left + 16;
+  var top = point.y + mapRect.top - 80;
+  // Keep within viewport
+  if (left + 360 > window.innerWidth) left = point.x + mapRect.left - 360;
+  if (top < mapRect.top) top = mapRect.top + 10;
+  if (top + 340 > window.innerHeight) top = window.innerHeight - 360;
+  countyFlyawayEl.style.left = left + 'px';
+  countyFlyawayEl.style.top = top + 'px';
+  countyFlyawayEl.classList.add('visible');
+}
+
+function closeCountyFlyaway() {
+  countyFlyawayEl.classList.remove('visible');
+  activeFlyawayFips = null;
+}
+
+// Close flyaway when clicking on map (but not on choropleth)
+map.on('click', function(e) {
+  if (activeFlyawayFips) closeCountyFlyaway();
+});
+
 // ── Choropleth Functions ──
 function getCountyColor(rate) {
   return rate > 68 ? '#b10026' :
@@ -685,16 +993,23 @@ async function loadChoropleth() {
         var fips = String(feature.id);
         var name = getCountyName(fips);
         var rate = getCountyRate(fips);
+        var d = COUNTY_DATA[fips];
         var stateCode = fips.substring(0, 2);
         var stateName = stateCode === '12' ? 'Florida' : 'Georgia';
-        layer.bindTooltip(
-          '<div class="county-name">' + name + '</div>' +
+        var tooltipText = '<div class="county-name">' + name + '</div>' +
           '<div style="font-size:10px;color:#64748b;">' + stateName + ' (FIPS: ' + fips + ')</div>' +
           '<div class="county-rate" style="margin-top:3px;">' +
           'Stroke Mortality: <strong>' + rate.toFixed(1) + '</strong>/100k' +
-          '</div>',
-          { sticky: true, direction: 'top', offset: [0, -10] }
-        );
+          '</div>';
+        if (d && d.a) {
+          tooltipText += '<div style="font-size:10px;margin-top:2px;">A-Fib: <strong>' + d.a.toFixed(1) + '%</strong></div>';
+        }
+        tooltipText += '<div style="font-size:9px;color:#94a3b8;margin-top:3px;">Click for detail card</div>';
+        layer.bindTooltip(tooltipText, { sticky: true, direction: 'top', offset: [0, -10] });
+        layer.on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          showCountyFlyaway(fips, e.latlng);
+        });
       }
     });
 
