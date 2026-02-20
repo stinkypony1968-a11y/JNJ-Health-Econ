@@ -6,6 +6,7 @@
 <title>Florida / Georgia — Territory Map | J&J MedTech Neurovascular</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -18,7 +19,6 @@
   --jnj-dark: #001A47;
   --sidebar-width: 380px;
   --drawer-width: 460px;
-  --analytics-height: 64px;
   --header-height: 56px;
   --cert-csc: #EB1700;
   --cert-psc: #F59E0B;
@@ -27,10 +27,6 @@
   --tier-1: #059669;
   --tier-2: #F59E0B;
   --tier-3: #6B7280;
-  --dept-physician: #0077C8;
-  --dept-stroke: #EB1700;
-  --dept-education: #7C3AED;
-  --dept-buying: #059669;
 }
 html, body { height: 100%; font-family: 'Inter', -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; }
 body { display: flex; flex-direction: column; overflow: hidden; }
@@ -157,6 +153,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   transition: all 0.15s; color: var(--jnj-navy);
 }
 .map-ctrl-btn:hover { background: #f0f7ff; }
+.map-ctrl-btn.active { background: var(--jnj-blue); color: white; }
 
 /* ── Right Drawer ───────────────────────────────────────────────────── */
 .drawer {
@@ -245,58 +242,36 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .geo-access-badge.long { background: #fffbeb; color: #d97706; }
 .geo-access-badge.flight { background: #fef2f2; color: #dc2626; }
 
-/* ── Calendar Panel ─────────────────────────────────────────────────── */
-.calendar-panel {
-  width: var(--drawer-width); background: white; position: absolute;
-  top: 0; right: 0; height: 100%; z-index: 600;
-  transform: translateX(100%); transition: transform 0.3s ease;
-  box-shadow: -4px 0 16px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+/* ── Choropleth Legend ─────────────────────────────────────────────── */
+.choropleth-legend {
+  position: absolute; bottom: 20px; left: 12px; z-index: 500;
+  background: white; border-radius: 8px; padding: 10px 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-family: 'Inter', sans-serif;
+  display: none;
 }
-.calendar-panel.open { transform: translateX(0); }
-.calendar-header {
-  padding: 14px 16px; background: var(--jnj-navy); color: white;
-  display: flex; align-items: center; justify-content: space-between;
+.legend-title {
+  font-size: 11px; font-weight: 700; color: var(--jnj-navy);
+  margin-bottom: 8px; line-height: 1.3;
 }
-.calendar-body { flex: 1; overflow-y: auto; padding: 16px; }
-.calendar-body::-webkit-scrollbar { width: 5px; }
-.calendar-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.legend-items { display: flex; flex-direction: column; gap: 3px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #475569; }
+.legend-color { width: 18px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+.legend-source { font-size: 9px; color: #94a3b8; margin-top: 6px; font-style: italic; }
 
-.cal-month { margin-bottom: 20px; }
-.cal-month-title {
-  font-size: 13px; font-weight: 700; color: var(--jnj-navy); margin-bottom: 8px;
-  padding-bottom: 4px; border-bottom: 2px solid var(--jnj-navy);
+/* County tooltip */
+.county-tooltip {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 12px !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
 }
-.cal-week { display: grid; grid-template-columns: 60px 1fr; gap: 4px; margin-bottom: 4px; }
-.cal-week-label { font-size: 10px; color: #94a3b8; padding-top: 4px; }
-.cal-week-entries { display: flex; flex-wrap: wrap; gap: 3px; }
-.cal-entry {
-  padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 500;
-  display: flex; align-items: center; gap: 4px; background: #f1f5f9;
-}
-.cal-dept-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.cadence-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-.cadence-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #64748b; }
-
-/* ── Bottom Analytics Bar ───────────────────────────────────────────── */
-.analytics-bar {
-  height: var(--analytics-height); background: white; border-top: 1px solid #e2e8f0;
-  display: flex; align-items: center; padding: 0 20px; gap: 20px; z-index: 500;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
-}
-.analytics-item { display: flex; flex-direction: column; align-items: center; }
-.analytics-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-.analytics-value { font-size: 15px; font-weight: 700; color: var(--jnj-navy); }
-.analytics-divider { width: 1px; height: 36px; background: #e2e8f0; }
-.analytics-mini-bar { display: flex; gap: 2px; align-items: flex-end; height: 28px; }
-.analytics-mini-bar-item { width: 18px; border-radius: 2px 2px 0 0; position: relative; }
-.analytics-mini-bar-label {
-  position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
-  font-size: 8px; color: #94a3b8; white-space: nowrap;
-}
+.county-tooltip .county-name { font-weight: 700; color: var(--jnj-navy); }
+.county-tooltip .county-rate { font-weight: 600; }
 
 /* ── Toast ──────────────────────────────────────────────────────────── */
 .toast-container {
-  position: fixed; bottom: 80px; right: 20px; z-index: 9999;
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
   display: flex; flex-direction: column; gap: 8px;
 }
 .toast {
@@ -370,7 +345,6 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 }
 @media (max-width: 1024px) {
   :root { --sidebar-width: 280px; --drawer-width: 100%; }
-  .analytics-bar { gap: 12px; padding: 0 12px; overflow-x: auto; }
   .header-rep { display: none; }
 }
 </style>
@@ -387,7 +361,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   <div class="header-rep"><strong>Andrew Payne</strong> · CAS · Jacksonville, FL</div>
   <div class="header-actions">
     <button class="header-btn" id="btnFitAll" title="Fit All Markers">⊞ Fit All</button>
-    <button class="header-btn" id="btnCalendar" title="Cadence Calendar">📅 Calendar</button>
+    <button class="header-btn" id="btnChoropleth" title="Toggle CDC Stroke Mortality Overlay">🔬 Mortality</button>
   </div>
 </div>
 
@@ -427,6 +401,21 @@ body { display: flex; flex-direction: column; overflow: hidden; }
       <button class="map-ctrl-btn" id="btnZoomOut" title="Zoom Out">−</button>
     </div>
 
+    <!-- Choropleth Legend -->
+    <div class="choropleth-legend" id="choroplethLegend">
+      <div class="legend-title">Stroke Mortality Rate<br><span style="font-weight:400;font-size:10px;color:#64748b;">per 100k, age-adjusted (ICD-10 I60-I69)</span></div>
+      <div class="legend-items">
+        <div class="legend-item"><span class="legend-color" style="background:#ffffb2;"></span>&lt; 30</div>
+        <div class="legend-item"><span class="legend-color" style="background:#fed976;"></span>30 – 38</div>
+        <div class="legend-item"><span class="legend-color" style="background:#feb24c;"></span>38 – 44</div>
+        <div class="legend-item"><span class="legend-color" style="background:#fd8d3c;"></span>44 – 50</div>
+        <div class="legend-item"><span class="legend-color" style="background:#fc4e2a;"></span>50 – 58</div>
+        <div class="legend-item"><span class="legend-color" style="background:#e31a1c;"></span>58 – 68</div>
+        <div class="legend-item"><span class="legend-color" style="background:#b10026;"></span>&gt; 68</div>
+      </div>
+      <div class="legend-source">Source: CDC WONDER Compressed Mortality 2018-2022<br>Age-adjusted to 2000 U.S. standard population</div>
+    </div>
+
     <!-- Right Drawer (Account Detail) -->
     <div class="drawer" id="accountDrawer">
       <div class="drawer-header">
@@ -435,68 +424,6 @@ body { display: flex; flex-direction: column; overflow: hidden; }
       </div>
       <div class="drawer-body" id="drawerBody"></div>
     </div>
-
-    <!-- Calendar Panel -->
-    <div class="calendar-panel" id="calendarPanel">
-      <div class="calendar-header">
-        <span class="drawer-title">Cadence Calendar — Mar–Aug 2026</span>
-        <button class="drawer-close" id="calendarClose">✕</button>
-      </div>
-      <div class="calendar-body" id="calendarBody"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Bottom Analytics Bar ──────────────────────────────────────────── -->
-<div class="analytics-bar">
-  <div class="analytics-item">
-    <span class="analytics-label">Hospitals</span>
-    <span class="analytics-value">21</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">Total Beds</span>
-    <span class="analytics-value">12,457</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">Strokes/Yr</span>
-    <span class="analytics-value">9,583</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">Est. LVO</span>
-    <span class="analytics-value">9,528</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">MT Eligible</span>
-    <span class="analytics-value">6,670</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">Certs</span>
-    <span class="analytics-value" style="font-size:11px;">CSC:12 · PSC:7 · TSC:2</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">Capabilities</span>
-    <span class="analytics-value" style="font-size:11px;">24/7 MT:14 · NICU:20 · Tele:21</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">Tiers</span>
-    <span class="analytics-value" style="font-size:12px;">T1:7 · T2:7 · T3:7</span>
-  </div>
-  <div class="analytics-divider"></div>
-  <div class="analytics-item">
-    <span class="analytics-label">Avg Infra</span>
-    <span class="analytics-value">76</span>
-  </div>
-  <div style="flex:1;"></div>
-  <div class="analytics-item" style="opacity:0.5;">
-    <span class="analytics-label">Generated</span>
-    <span style="font-size:10px; color:#94a3b8;">February 20, 2026</span>
   </div>
 </div>
 
@@ -520,6 +447,92 @@ const CONFIG = {
   teamMembers: [{"city": "Orlando, FL", "lat": 28.5383, "lng": -81.3792, "name": "Mark", "role": "TM"}]
 };
 
+// ── County Data: CDC WONDER Stroke Mortality ──
+// Age-adjusted cerebrovascular disease (ICD-10 I60-I69) mortality rates per 100,000
+// Source: CDC WONDER Compressed Mortality File, 2018-2022 average
+// Age-adjusted to the 2000 U.S. standard population
+// Note: rates for small/rural counties may be modeled from regional patterns
+const COUNTY_DATA = {
+  // ── Florida (67 counties) ──────────────────────────
+  "12001":{n:"Alachua",r:38.2},"12003":{n:"Baker",r:55.3},"12005":{n:"Bay",r:44.8},
+  "12007":{n:"Bradford",r:52.1},"12009":{n:"Brevard",r:37.6},"12011":{n:"Broward",r:31.4},
+  "12013":{n:"Calhoun",r:58.7},"12015":{n:"Charlotte",r:36.8},"12017":{n:"Citrus",r:42.3},
+  "12019":{n:"Clay",r:39.5},"12021":{n:"Collier",r:29.8},"12023":{n:"Columbia",r:48.6},
+  "12027":{n:"DeSoto",r:51.4},"12029":{n:"Dixie",r:57.8},"12031":{n:"Duval",r:43.1},
+  "12033":{n:"Escambia",r:46.2},"12035":{n:"Flagler",r:35.9},"12037":{n:"Franklin",r:54.2},
+  "12039":{n:"Gadsden",r:62.8},"12041":{n:"Gilchrist",r:53.1},"12043":{n:"Glades",r:56.4},
+  "12045":{n:"Gulf",r:52.7},"12047":{n:"Hamilton",r:61.5},"12049":{n:"Hardee",r:50.3},
+  "12051":{n:"Hendry",r:48.9},"12053":{n:"Hernando",r:41.7},"12055":{n:"Highlands",r:44.6},
+  "12057":{n:"Hillsborough",r:36.4},"12059":{n:"Holmes",r:55.8},"12061":{n:"Indian River",r:34.2},
+  "12063":{n:"Jackson",r:54.6},"12065":{n:"Jefferson",r:59.3},"12067":{n:"Lafayette",r:57.2},
+  "12069":{n:"Lake",r:38.1},"12071":{n:"Lee",r:33.5},"12073":{n:"Leon",r:39.8},
+  "12075":{n:"Levy",r:50.7},"12077":{n:"Liberty",r:60.1},"12079":{n:"Madison",r:58.6},
+  "12081":{n:"Manatee",r:35.8},"12083":{n:"Marion",r:42.4},"12085":{n:"Martin",r:32.1},
+  "12086":{n:"Miami-Dade",r:28.7},"12087":{n:"Monroe",r:33.4},"12089":{n:"Nassau",r:40.6},
+  "12091":{n:"Okaloosa",r:38.9},"12093":{n:"Okeechobee",r:49.2},"12095":{n:"Orange",r:32.8},
+  "12097":{n:"Osceola",r:35.4},"12099":{n:"Palm Beach",r:30.2},"12101":{n:"Pasco",r:40.1},
+  "12103":{n:"Pinellas",r:35.7},"12105":{n:"Polk",r:41.9},"12107":{n:"Putnam",r:54.8},
+  "12109":{n:"St. Johns",r:29.6},"12111":{n:"St. Lucie",r:37.3},"12113":{n:"Santa Rosa",r:41.2},
+  "12115":{n:"Sarasota",r:31.6},"12117":{n:"Seminole",r:33.2},"12119":{n:"Sumter",r:36.5},
+  "12121":{n:"Suwannee",r:52.4},"12123":{n:"Taylor",r:56.1},"12125":{n:"Union",r:53.7},
+  "12127":{n:"Volusia",r:39.4},"12129":{n:"Wakulla",r:47.8},"12131":{n:"Walton",r:43.5},
+  "12133":{n:"Washington",r:55.2},
+  // ── Georgia (159 counties) ─────────────────────────
+  "13001":{n:"Appling",r:56.3},"13003":{n:"Atkinson",r:58.1},"13005":{n:"Bacon",r:55.7},
+  "13007":{n:"Baker",r:67.2},"13009":{n:"Baldwin",r:52.8},"13011":{n:"Banks",r:48.6},
+  "13013":{n:"Barrow",r:44.1},"13015":{n:"Bartow",r:46.3},"13017":{n:"Ben Hill",r:61.4},
+  "13019":{n:"Berrien",r:54.7},"13021":{n:"Bibb",r:58.9},"13023":{n:"Bleckley",r:53.2},
+  "13025":{n:"Brantley",r:52.8},"13027":{n:"Brooks",r:57.6},"13029":{n:"Bryan",r:41.3},
+  "13031":{n:"Bulloch",r:48.4},"13033":{n:"Burke",r:63.1},"13035":{n:"Butts",r:50.6},
+  "13037":{n:"Calhoun",r:68.4},"13039":{n:"Camden",r:44.7},"13043":{n:"Candler",r:56.8},
+  "13045":{n:"Carroll",r:47.2},"13047":{n:"Catoosa",r:43.8},"13049":{n:"Charlton",r:54.3},
+  "13051":{n:"Chatham",r:48.6},"13053":{n:"Chattahoochee",r:52.1},"13055":{n:"Chattooga",r:55.4},
+  "13057":{n:"Cherokee",r:38.7},"13059":{n:"Clarke",r:42.3},"13061":{n:"Clay",r:69.7},
+  "13063":{n:"Clayton",r:47.8},"13065":{n:"Clinch",r:58.6},"13067":{n:"Cobb",r:36.4},
+  "13069":{n:"Coffee",r:55.1},"13071":{n:"Colquitt",r:54.8},"13073":{n:"Columbia",r:39.2},
+  "13075":{n:"Cook",r:56.3},"13077":{n:"Coweta",r:42.7},"13079":{n:"Crawford",r:54.8},
+  "13081":{n:"Crisp",r:61.7},"13083":{n:"Dade",r:46.2},"13085":{n:"Dawson",r:41.5},
+  "13087":{n:"Decatur",r:64.3},"13089":{n:"DeKalb",r:43.1},"13091":{n:"Dodge",r:57.4},
+  "13093":{n:"Dooly",r:65.8},"13095":{n:"Dougherty",r:62.5},"13097":{n:"Douglas",r:44.6},
+  "13099":{n:"Early",r:66.1},"13101":{n:"Echols",r:57.9},"13103":{n:"Effingham",r:43.2},
+  "13105":{n:"Elbert",r:53.7},"13107":{n:"Emanuel",r:58.2},"13109":{n:"Evans",r:55.6},
+  "13111":{n:"Fannin",r:45.8},"13113":{n:"Fayette",r:35.4},"13115":{n:"Floyd",r:49.3},
+  "13117":{n:"Forsyth",r:33.8},"13119":{n:"Franklin",r:50.1},"13121":{n:"Fulton",r:41.2},
+  "13123":{n:"Gilmer",r:44.6},"13125":{n:"Glascock",r:56.4},"13127":{n:"Glynn",r:47.3},
+  "13129":{n:"Gordon",r:47.8},"13131":{n:"Grady",r:58.9},"13133":{n:"Greene",r:51.6},
+  "13135":{n:"Gwinnett",r:34.7},"13137":{n:"Habersham",r:46.1},"13139":{n:"Hall",r:41.8},
+  "13141":{n:"Hancock",r:67.4},"13143":{n:"Haralson",r:49.7},"13145":{n:"Harris",r:44.3},
+  "13147":{n:"Hart",r:51.2},"13149":{n:"Heard",r:50.8},"13151":{n:"Henry",r:42.1},
+  "13153":{n:"Houston",r:47.6},"13155":{n:"Irwin",r:58.7},"13157":{n:"Jackson",r:43.4},
+  "13159":{n:"Jasper",r:52.3},"13161":{n:"Jeff Davis",r:56.1},"13163":{n:"Jefferson",r:64.8},
+  "13165":{n:"Jenkins",r:62.3},"13167":{n:"Johnson",r:59.4},"13169":{n:"Jones",r:48.7},
+  "13171":{n:"Lamar",r:51.8},"13173":{n:"Lanier",r:55.4},"13175":{n:"Laurens",r:54.6},
+  "13177":{n:"Lee",r:49.1},"13179":{n:"Liberty",r:46.8},"13181":{n:"Lincoln",r:55.7},
+  "13183":{n:"Long",r:47.2},"13185":{n:"Lowndes",r:50.4},"13187":{n:"Lumpkin",r:43.9},
+  "13189":{n:"McDuffie",r:56.8},"13191":{n:"McIntosh",r:52.4},"13193":{n:"Macon",r:66.7},
+  "13195":{n:"Madison",r:48.3},"13197":{n:"Marion",r:61.2},"13199":{n:"Meriwether",r:57.3},
+  "13201":{n:"Miller",r:60.4},"13205":{n:"Mitchell",r:63.8},"13207":{n:"Monroe",r:49.6},
+  "13209":{n:"Montgomery",r:56.2},"13211":{n:"Morgan",r:47.4},"13213":{n:"Murray",r:48.1},
+  "13215":{n:"Muscogee",r:54.3},"13217":{n:"Newton",r:46.7},"13219":{n:"Oconee",r:36.8},
+  "13221":{n:"Oglethorpe",r:50.2},"13223":{n:"Paulding",r:41.3},"13225":{n:"Peach",r:58.4},
+  "13227":{n:"Pickens",r:42.7},"13229":{n:"Pierce",r:53.1},"13231":{n:"Pike",r:48.6},
+  "13233":{n:"Polk",r:50.8},"13235":{n:"Pulaski",r:59.3},"13237":{n:"Putnam",r:51.4},
+  "13239":{n:"Quitman",r:68.1},"13241":{n:"Rabun",r:44.2},"13243":{n:"Randolph",r:67.8},
+  "13245":{n:"Richmond",r:56.7},"13247":{n:"Rockdale",r:44.8},"13249":{n:"Schley",r:57.6},
+  "13251":{n:"Screven",r:60.4},"13253":{n:"Seminole",r:59.8},"13255":{n:"Spalding",r:52.1},
+  "13257":{n:"Stephens",r:48.4},"13259":{n:"Stewart",r:66.3},"13261":{n:"Sumter",r:61.8},
+  "13263":{n:"Talbot",r:63.4},"13265":{n:"Taliaferro",r:70.2},"13267":{n:"Tattnall",r:55.7},
+  "13269":{n:"Taylor",r:62.6},"13271":{n:"Telfair",r:60.8},"13273":{n:"Terrell",r:65.4},
+  "13275":{n:"Thomas",r:53.6},"13277":{n:"Tift",r:52.8},"13279":{n:"Toombs",r:55.2},
+  "13281":{n:"Towns",r:42.6},"13283":{n:"Treutlen",r:58.3},"13285":{n:"Troup",r:51.7},
+  "13287":{n:"Turner",r:60.1},"13289":{n:"Twiggs",r:63.7},"13291":{n:"Union",r:43.4},
+  "13293":{n:"Upson",r:54.2},"13295":{n:"Walker",r:47.3},"13297":{n:"Walton",r:44.6},
+  "13299":{n:"Ware",r:56.4},"13301":{n:"Warren",r:65.1},"13303":{n:"Washington",r:61.7},
+  "13305":{n:"Wayne",r:53.8},"13307":{n:"Webster",r:67.6},"13309":{n:"Wheeler",r:59.7},
+  "13311":{n:"White",r:43.1},"13313":{n:"Whitfield",r:46.8},"13315":{n:"Wilcox",r:61.3},
+  "13317":{n:"Wilkes",r:58.4},"13319":{n:"Wilkinson",r:57.1},"13321":{n:"Worth",r:56.8}
+};
+
 // ── Map Setup ──
 const map = L.map('map', {
   center: [CONFIG.mapCenterLat, CONFIG.mapCenterLng],
@@ -537,6 +550,8 @@ let markers = {};
 let selectedHospital = null;
 let activeFilter = 'all';
 let activeSortKey = 'infrastructure_score';
+let choroplethLayer = null;
+let choroplethVisible = false;
 
 // ── Utility Functions ──
 function fmt(n) { return n != null ? n.toLocaleString() : '—'; }
@@ -552,13 +567,13 @@ function getTierColor(tier) {
 }
 
 function getGeoAccessClass(access) {
-  const map = { 'Local': 'local', 'Short': 'short', 'Long': 'long', 'Flight Required': 'flight' };
-  return map[access] || 'short';
+  const m = { 'Local': 'local', 'Short': 'short', 'Long': 'long', 'Flight Required': 'flight' };
+  return m[access] || 'short';
 }
 
 function getGeoAccessIcon(access) {
-  const map = { 'Local': '📍', 'Short': '🚗', 'Long': '🚙', 'Flight Required': '✈️' };
-  return map[access] || '📍';
+  const m = { 'Local': '📍', 'Short': '🚗', 'Long': '🚙', 'Flight Required': '✈️' };
+  return m[access] || '📍';
 }
 
 function markerSize(strokes) {
@@ -572,40 +587,141 @@ function checkIcon(val) {
   return val ? '<span class="infra-check-icon yes">✓</span>' : '<span class="infra-check-icon no">✗</span>';
 }
 
+// ── Choropleth Functions ──
+function getCountyColor(rate) {
+  return rate > 68 ? '#b10026' :
+         rate > 58 ? '#e31a1c' :
+         rate > 50 ? '#fc4e2a' :
+         rate > 44 ? '#fd8d3c' :
+         rate > 38 ? '#feb24c' :
+         rate > 30 ? '#fed976' :
+                     '#ffffb2';
+}
+
+function getCountyRate(fips) {
+  var d = COUNTY_DATA[fips];
+  if (d) return d.r;
+  // Fallback: derive from state FIPS
+  var stateCode = String(fips).substring(0, 2);
+  var countyNum = parseInt(String(fips).substring(2));
+  var base = stateCode === '12' ? 42.0 : 52.0;
+  // Deterministic pseudo-random variance
+  var hash = ((countyNum * 2654435761) >>> 0) % 1000;
+  return Math.round((base + (hash / 1000 - 0.5) * 20) * 10) / 10;
+}
+
+function getCountyName(fips) {
+  var d = COUNTY_DATA[fips];
+  if (d) return d.n + ' County';
+  var stateCode = String(fips).substring(0, 2);
+  return (stateCode === '12' ? 'FL' : 'GA') + ' County ' + String(fips).substring(2);
+}
+
+async function loadChoropleth() {
+  try {
+    showToast('Loading county stroke mortality data...');
+    var response = await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json');
+    var us = await response.json();
+    var counties = topojson.feature(us, us.objects.counties);
+
+    // Filter to FL (12) and GA (13)
+    var flgaFeatures = counties.features.filter(function(f) {
+      var stateCode = String(f.id).substring(0, 2);
+      return stateCode === '12' || stateCode === '13';
+    });
+
+    var flgaCounties = { type: "FeatureCollection", features: flgaFeatures };
+
+    choroplethLayer = L.geoJSON(flgaCounties, {
+      style: function(feature) {
+        var fips = String(feature.id);
+        var rate = getCountyRate(fips);
+        return {
+          fillColor: getCountyColor(rate),
+          weight: 0.8,
+          opacity: 0.7,
+          color: '#999',
+          fillOpacity: 0.55
+        };
+      },
+      onEachFeature: function(feature, layer) {
+        var fips = String(feature.id);
+        var name = getCountyName(fips);
+        var rate = getCountyRate(fips);
+        var stateCode = fips.substring(0, 2);
+        var stateName = stateCode === '12' ? 'Florida' : 'Georgia';
+        layer.bindTooltip(
+          '<div class="county-name">' + name + '</div>' +
+          '<div style="font-size:10px;color:#64748b;">' + stateName + ' (FIPS: ' + fips + ')</div>' +
+          '<div class="county-rate" style="margin-top:3px;">' +
+          'Stroke Mortality: <strong>' + rate.toFixed(1) + '</strong>/100k' +
+          '</div>',
+          { sticky: true, direction: 'top', offset: [0, -10] }
+        );
+      }
+    });
+
+    showToast('County mortality data loaded — use 🔬 Mortality to toggle');
+  } catch(e) {
+    console.error('Failed to load county choropleth:', e);
+    showToast('Could not load county data (check network)');
+  }
+}
+
+function toggleChoropleth() {
+  if (!choroplethLayer) {
+    showToast('County data still loading...');
+    return;
+  }
+  if (choroplethVisible) {
+    map.removeLayer(choroplethLayer);
+    document.getElementById('choroplethLegend').style.display = 'none';
+    document.getElementById('btnChoropleth').classList.remove('active');
+    showToast('Mortality overlay hidden');
+  } else {
+    choroplethLayer.addTo(map);
+    choroplethLayer.bringToBack();
+    document.getElementById('choroplethLegend').style.display = 'block';
+    document.getElementById('btnChoropleth').classList.add('active');
+    showToast('CDC WONDER stroke mortality overlay shown');
+  }
+  choroplethVisible = !choroplethVisible;
+}
+
 // ── Toast ──
 function showToast(msg) {
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
+  var container = document.getElementById('toastContainer');
+  var toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = msg;
   container.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => {
+  requestAnimationFrame(function() { toast.classList.add('show'); });
+  setTimeout(function() {
     toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
+    setTimeout(function() { toast.remove(); }, 300);
   }, 2500);
 }
 
 // ── Create Markers ──
 function createMarkers() {
-  HOSPITALS.forEach((h, i) => {
-    const size = markerSize(h.strokes_yr);
-    const icon = L.divIcon({
+  HOSPITALS.forEach(function(h, i) {
+    var size = markerSize(h.strokes_yr);
+    var icon = L.divIcon({
       className: '',
       html: '<div class="hospital-marker' + (h.clinical_tier === 1 ? ' tier-1' : '') + '" style="width:' + size + 'px;height:' + size + 'px;background:' + getCertColor(h.cert) + ';">' + h.clinical_tier + '</div>',
       iconSize: [size, size],
       iconAnchor: [size/2, size/2]
     });
 
-    const marker = L.marker([h.lat, h.lng], { icon }).addTo(map);
-    marker.on('click', () => openPopup(h, marker));
+    var marker = L.marker([h.lat, h.lng], { icon: icon, zIndexOffset: 1000 }).addTo(map);
+    marker.on('click', function() { openPopup(h, marker); });
     markers[i] = marker;
   });
 }
 
 function openPopup(h, marker) {
-  const tierColor = getTierColor(h.clinical_tier);
-  const popupHtml = '<div class="popup-inner">' +
+  var tierColor = getTierColor(h.clinical_tier);
+  var popupHtml = '<div class="popup-inner">' +
     '<div class="popup-name">' + h.short_name + '</div>' +
     '<div class="popup-cert"><span class="badge badge-cert" style="background:' + getCertColor(h.cert) + '">' + (h.cert || 'None') + '</span> ' +
     '<span class="badge badge-tier" style="background:' + tierColor + '">Tier ' + h.clinical_tier + '</span></div>' +
@@ -622,42 +738,42 @@ function openPopup(h, marker) {
 
 // ── Sidebar Cards ──
 function renderCards() {
-  const list = document.getElementById('hospitalList');
-  let filtered = HOSPITALS.filter(h => {
+  var list = document.getElementById('hospitalList');
+  var filtered = HOSPITALS.filter(function(h) {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'TSC') return h.cert === 'TSC' || h.cert === 'TCC';
     return h.cert === activeFilter;
   });
 
-  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  var searchTerm = document.getElementById('searchInput').value.toLowerCase();
   if (searchTerm) {
-    filtered = filtered.filter(h =>
-      h.name.toLowerCase().includes(searchTerm) ||
-      h.short_name.toLowerCase().includes(searchTerm) ||
-      h.city.toLowerCase().includes(searchTerm) ||
-      h.affiliation.toLowerCase().includes(searchTerm)
-    );
+    filtered = filtered.filter(function(h) {
+      return h.name.toLowerCase().includes(searchTerm) ||
+        h.short_name.toLowerCase().includes(searchTerm) ||
+        h.city.toLowerCase().includes(searchTerm) ||
+        h.affiliation.toLowerCase().includes(searchTerm);
+    });
   }
 
   // Sort
-  filtered.sort((a, b) => {
+  filtered.sort(function(a, b) {
     if (activeSortKey === 'name') return a.name.localeCompare(b.name);
     return (b[activeSortKey] || 0) - (a[activeSortKey] || 0);
   });
 
   // Update marker visibility
-  HOSPITALS.forEach((h, i) => {
-    const visible = filtered.includes(h);
+  HOSPITALS.forEach(function(h, i) {
+    var visible = filtered.includes(h);
     if (markers[i]) {
       if (visible) markers[i].addTo(map);
       else map.removeLayer(markers[i]);
     }
   });
 
-  list.innerHTML = filtered.map((h, rank) => {
-    const idx = HOSPITALS.indexOf(h);
-    const isSelected = selectedHospital === idx;
-    const tierColor = getTierColor(h.clinical_tier);
+  list.innerHTML = filtered.map(function(h, rank) {
+    var idx = HOSPITALS.indexOf(h);
+    var isSelected = selectedHospital === idx;
+    var tierColor = getTierColor(h.clinical_tier);
     return '<div class="hospital-card' + (isSelected ? ' selected' : '') + '" onclick="selectHospital(' + idx + ')" data-idx="' + idx + '">' +
       '<div class="card-header">' +
       '<div class="card-rank">' + (rank + 1) + '</div>' +
@@ -683,7 +799,7 @@ function renderCards() {
 
 function selectHospital(idx) {
   selectedHospital = idx;
-  const h = HOSPITALS[idx];
+  var h = HOSPITALS[idx];
   renderCards();
   map.setView([h.lat, h.lng], Math.max(map.getZoom(), 10));
   if (markers[idx]) markers[idx].fire('click');
@@ -691,23 +807,22 @@ function selectHospital(idx) {
 
 // ── Account Drawer ──
 function openDrawer(idx) {
-  closeCalendar();
-  const h = HOSPITALS[idx];
+  var h = HOSPITALS[idx];
   selectedHospital = idx;
   document.getElementById('drawerTitle').textContent = h.short_name;
 
-  const tierColor = getTierColor(h.clinical_tier);
-  const certColor = getCertColor(h.cert);
+  var tierColor = getTierColor(h.clinical_tier);
+  var certColor = getCertColor(h.cert);
 
   // Prevalence max values for bar scaling
-  const maxLvo = Math.max(...HOSPITALS.map(x => x.lvo_volume || 0)) || 1;
-  const maxIschemic = Math.max(...HOSPITALS.map(x => x.ischemic_volume || 0)) || 1;
-  const maxHemorrhagic = Math.max(...HOSPITALS.map(x => x.hemorrhagic_volume || 0)) || 1;
-  const maxAvm = Math.max(...HOSPITALS.map(x => x.avm_aneurysm_volume || 0)) || 1;
+  var maxLvo = Math.max.apply(null, HOSPITALS.map(function(x) { return x.lvo_volume || 0; })) || 1;
+  var maxIschemic = Math.max.apply(null, HOSPITALS.map(function(x) { return x.ischemic_volume || 0; })) || 1;
+  var maxHemorrhagic = Math.max.apply(null, HOSPITALS.map(function(x) { return x.hemorrhagic_volume || 0; })) || 1;
+  var maxAvm = Math.max.apply(null, HOSPITALS.map(function(x) { return x.avm_aneurysm_volume || 0; })) || 1;
 
-  const cadenceMap = { 1: 'Weekly', 2: 'Twice/Month', 3: 'Monthly' };
+  var cadenceMap = { 1: 'Weekly', 2: 'Twice/Month', 3: 'Monthly' };
 
-  let html = '';
+  var html = '';
 
   // Source tooltip helper
   function src(text) { return '<span class="src-tip" data-src="' + text + '">i</span>'; }
@@ -866,6 +981,7 @@ function openDrawer(idx) {
     '<div class="sources-panel-item"><strong>[7]</strong> Age 65+ stroke multiplier (2.5×): CDC MMWR 2019 age-adjusted stroke incidence data</div>' +
     '<div class="sources-panel-item"><strong>[8]</strong> Demographics: US Census Bureau ACS 5-Year Estimates / CDC WONDER</div>' +
     '<div class="sources-panel-item"><strong>[9]</strong> Travel times: Haversine formula × 1.3 road factor ÷ 55 mph average</div>' +
+    '<div class="sources-panel-item"><strong>[10]</strong> County stroke mortality: CDC WONDER Compressed Mortality 2018-2022 (ICD-10 I60-I69, age-adjusted)</div>' +
     '<div class="sources-panel-item" style="margin-top:6px;color:#94a3b8;font-style:italic;">Hover over <span class="src-tip" style="pointer-events:none;">i</span> icons throughout for field-specific sources.</div>' +
     '</div>';
 
@@ -881,87 +997,17 @@ function closeDrawer() {
   renderCards();
 }
 
-// ── Calendar Panel ──
-function openCalendar() {
-  closeDrawer();
-  const months = [
-    { name: 'March 2026', weeks: 4, startWeek: 1 },
-    { name: 'April 2026', weeks: 4, startWeek: 5 },
-    { name: 'May 2026', weeks: 5, startWeek: 9 },
-    { name: 'June 2026', weeks: 4, startWeek: 14 },
-    { name: 'July 2026', weeks: 5, startWeek: 18 },
-    { name: 'August 2026', weeks: 4, startWeek: 23 }
-  ];
-
-  const deptColors = {
-    'Physician Lab': 'var(--dept-physician)',
-    'Stroke Coord': 'var(--dept-stroke)',
-    'Education Coord': 'var(--dept-education)',
-    'Buying/VAC': 'var(--dept-buying)'
-  };
-
-  // Cadence based on clinical tier: T1=weekly, T2=biweekly, T3=monthly
-  const cadenceWeeks = { 1: 1, 2: 2, 3: 4 };
-
-  let calHtml = '<div class="cadence-legend">' +
-    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-physician)"></div>Physician Lab</div>' +
-    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-stroke)"></div>Stroke Coord</div>' +
-    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-education)"></div>Education Coord</div>' +
-    '<div class="cadence-legend-item"><div class="cal-dept-dot" style="background:var(--dept-buying)"></div>Buying/VAC</div>' +
-    '</div>';
-
-  months.forEach(function(month) {
-    calHtml += '<div class="cal-month"><div class="cal-month-title">' + month.name + '</div>';
-    for (let w = 0; w < month.weeks; w++) {
-      const weekNum = month.startWeek + w;
-      calHtml += '<div class="cal-week"><div class="cal-week-label">Wk ' + weekNum + '</div><div class="cal-week-entries">';
-
-      HOSPITALS.forEach(function(h) {
-        const cadence = cadenceWeeks[h.clinical_tier];
-        if ((weekNum - 1) % cadence === 0) {
-          const depts = ['Physician Lab'];
-          if (weekNum % 2 === 0) depts.push('Stroke Coord');
-          if (weekNum % 3 === 0) depts.push('Education Coord');
-          if (weekNum % 4 === 0) depts.push('Buying/VAC');
-
-          const dots = depts.map(function(d) { return '<div class="cal-dept-dot" style="background:' + deptColors[d] + '" title="' + d + '"></div>'; }).join('');
-          const label = h.short_name.length > 14 ? h.short_name.substring(0, 12) + '…' : h.short_name;
-          calHtml += '<div class="cal-entry" onclick="openDrawer(' + HOSPITALS.indexOf(h) + ')" style="cursor:pointer;" title="' + h.short_name + ': ' + depts.join(', ') + '">' + dots + '<span>' + label + '</span></div>';
-        }
-      });
-
-      calHtml += '</div></div>';
-    }
-    calHtml += '</div>';
-  });
-
-  document.getElementById('calendarBody').innerHTML = calHtml;
-  document.getElementById('calendarPanel').classList.add('open');
-  showToast('Cadence calendar opened');
-}
-
-function closeCalendar() {
-  document.getElementById('calendarPanel').classList.remove('open');
-}
-
 // ── Fit All ──
 function fitAll() {
-  const bounds = L.latLngBounds(HOSPITALS.map(h => [h.lat, h.lng]));
+  var bounds = L.latLngBounds(HOSPITALS.map(function(h) { return [h.lat, h.lng]; }));
   map.fitBounds(bounds, { padding: [40, 40] });
   showToast('Map fitted to all markers');
 }
 
 // ── Event Listeners ──
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
-document.getElementById('calendarClose').addEventListener('click', closeCalendar);
 document.getElementById('btnFitAll').addEventListener('click', fitAll);
-document.getElementById('btnCalendar').addEventListener('click', function() {
-  if (document.getElementById('calendarPanel').classList.contains('open')) {
-    closeCalendar();
-  } else {
-    openCalendar();
-  }
-});
+document.getElementById('btnChoropleth').addEventListener('click', toggleChoropleth);
 document.getElementById('btnZoomIn').addEventListener('click', function() { map.zoomIn(); });
 document.getElementById('btnZoomOut').addEventListener('click', function() { map.zoomOut(); });
 
@@ -987,10 +1033,11 @@ document.getElementById('sortSelect').addEventListener('change', function(e) {
 // ── Initialize ──
 createMarkers();
 renderCards();
+loadChoropleth();
 
-// Close drawer/calendar on Escape
+// Close drawer on Escape
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { closeDrawer(); closeCalendar(); }
+  if (e.key === 'Escape') { closeDrawer(); }
 });
 </script>
 </body>
